@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en-US" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Spring Boot H2</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" />
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Popper JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <style>
+        .update{
+            float: left;
+            margin-right: 10px;
+        }
+        .list{
+            float: right;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <form action="#" th:action="@{/board/u}" method="post" th:object="${entity}">
+    	<input type= "hidden" th:field="*{no}">
+        <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" class="form-control"  id="subject"  th:field="*{subject}" readonly="readonly">
+        </div>
+        <div class="form-group">
+            <label for="content">Content</label>
+              <textarea class="form-control" id="content" rows="7" th:field="*{content}"></textarea>
+        </div>
+     
+        <button type="submit" class="btn btn-primary update">update</button>
+    </form>
+    <button type="button" th:onclick="|javascript:del('${entity.no}')|" class="btn btn-primary delete">delete</button>
+    
+   <button type="button" onclick="location.href='/board/list'" class="btn btn-primary list">list</button>
+</body>
+<script type="text/javascript">
+    function del(idx) {
+        location.href="/board/d?no="+idx;
+    }
+</script>
+
+
+</html>

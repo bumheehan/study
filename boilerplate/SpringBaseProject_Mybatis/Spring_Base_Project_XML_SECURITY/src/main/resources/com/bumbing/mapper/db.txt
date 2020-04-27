@@ -1,0 +1,37 @@
+CREATE TABLE `minigame`.`tbl_member` (
+  `email` VARCHAR(30) NOT NULL,
+  `pwd` VARCHAR(50) NOT NULL,
+  `username` VARCHAR(30) NOT NULL,
+  `cdate` DATE NOT NULL,
+  `ddate` DATE NULL,
+  `state` INT NOT NULL DEFAULT 0,
+  `profile` INT NULL,
+  `aboutme` VARCHAR(600) NULL,
+  PRIMARY KEY (`email`));
+
+
+ø¿∂Û≈¨
+drop table tbl_member;
+
+Create Table tbl_member(
+	email varchar2(30) not null,
+	pwd VARCHAR(50) NOT NULL,
+	username VARCHAR(30) NOT NULL,
+	cdate DATE NOT NULL,
+	ddate DATE NULL,
+	state number(1) DEFAULT 0 NOT NULL ,
+	profile varchar2(50) null,
+	aboutme VARCHAR2(600) null 
+);
+ALTER TABLE tbl_member add
+constraint pk_member PRIMARY KEY  (email);
+
+
+Create Table tbl_auth(
+    email varchar2(30) not null,
+    auth varchar2(20) not null
+);
+
+ALTER TABLE tbl_auth add constraint fk_auth foreign KEY (email) references tbl_member(email) on delete cascade;
+
+

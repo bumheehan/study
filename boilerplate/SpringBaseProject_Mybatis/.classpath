@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML_MySQL/src/main/java"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML_MySQL/src/test/java"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML_SECURITY/src/main/java"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML_SECURITY/src/test/java"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML/src/main/java"/>
+	<classpathentry kind="src" path="Spring_Base_Project_XML/src/test/java"/>
+	<classpathentry kind="src" path="SpringBaseProject/src/main/java"/>
+	<classpathentry kind="lib" path="Spring_Base_Project_XML_SECURITY/src/main/webapp/WEB-INF/lib/ojdbc8.jar"/>
+	<classpathentry kind="lib" path="Spring_Base_Project_XML/src/main/webapp/WEB-INF/lib/ojdbc8.jar"/>
+	<classpathentry kind="lib" path="SpringBaseProject/src/main/webapp/WEB-INF/lib/ojdbc8.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.web.container"/>
+	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>
+	<classpathentry kind="output" path="SpringBaseProject/target/classes"/>
+</classpath>

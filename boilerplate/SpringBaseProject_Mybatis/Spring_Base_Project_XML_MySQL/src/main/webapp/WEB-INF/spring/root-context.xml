@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xsi:schemaLocation="http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd">
+	
+	<!-- Root Context: defines shared resources visible to all other web components -->
+		<!-- NameSpaces 에서 context 추가 -->
+		<context:component-scan base-package="com.bumbing.*">
+		</context:component-scan>
+		
+		
+		<!-- HikariConfig and DataSource : 데이터베이스 -->
+		<!-- log4jdbc 원치 않을시 삭제 -->
+		<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+			<property name="driverClassName" value="net.sf.log4jdbc.sql.jdbcapi.DriverSpy"></property>
+			
+			<!--  XML 에서는 &쓸려면  &amp; 이렇게 써야함 -->
+			<property name="jdbcUrl" value="jdbc:log4jdbc:mysql://127.0.0.1:3306/minigame?serverTimezone=UTC"></property>
+			<property name="username" value="Spring"></property> <!-- 대소문자 가림 -->
+			<property name="password" value="java"></property>
+		</bean>
+
+		<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+			<constructor-arg ref="hikariConfig"/>
+		</bean>
+		
+		<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+			<property name="dataSource" ref="dataSource"></property>
+		</bean>
+		
+		
+		<!-- Mybatis mapper -->
+		<mybatis-spring:scan base-package="com.bumbing.mapper"/>
+		
+		
+		
+</beans>

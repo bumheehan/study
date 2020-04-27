@@ -1,0 +1,3 @@
+00:24:49.757 [main] DEBUG LogBack_Prac.CommonLog  - Hello world.
+00:24:49.791 [Thread-3] DEBUG LogBack_Prac.CommonLog  - default
+00:24:49.792 [Thread-4] DEBUG LogBack_Prac.CommonLog  - default
