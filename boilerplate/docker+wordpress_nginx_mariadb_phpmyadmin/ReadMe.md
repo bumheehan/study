@@ -1,3 +1,5 @@
+https://github.com/mjstealey/wordpress-nginx-docker 
+
 # Wordpress,nginx,php-fpm,phpmyadmin
 
 CentOS 7 에서 설정
