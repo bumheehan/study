@@ -245,5 +245,258 @@ interface TriFunction<T,U,V,R>{
 | Map        | V computeIfAbsent(K key,Function<K,V> f)    | 키가 없으면, 작업 f 수행 후 추가  |
 | Map        | V computePresent(K key,BiFunction<V,V,V> f) | 지정된 키가 있을 때 , 작업 f 수행 |
 | Map        | V merge(K key,V value,BiFunction<V,V,V> f)  | 모든 요소에 병합작업 f를 수행     |
-| Map        | boolean removeIf(Predicate<E> filter)       | 조건에 맞는 요소를 삭제           |
-| Collection | boolean removeIf(Predicate<E> filter)       | 조건에 맞는 요소를 삭제           |
+| Map        | void forEach(BiConsumer<K,V> action)        | 모든 요소에 작업 action 수행      |
+| Map        | void replaceAll(BiFunction<V,V,V> f)        | 모든 요소에 치환 작업 f를 수행    |
+
+
+
+예제 4
+
+
+
+### 기본형 함수형 인터페이스
+
+Wrapper 클래스 사용은 비효율적이라 기본형 함수형 인터페이스가 있음
+
+| 함수형 인터페이스   | 메서드                                | 설명                                           |
+| ------------------- | ------------------------------------- | ---------------------------------------------- |
+| DoubleToIntFunction | double->int applyAsInt(double t)->int | 매개변수 double  , 반환 int                    |
+| ToIntFunction<T>    | T->int applyAsInt(T value)->int       | 매개변수 T  , 반환 int                         |
+| IntFunction<R>      | int->R apply(T t, U u) ->R            | AFunction은 입력이 A타입이고 출력은 지네릭타입 |
+| ObjIntConsumer<T>   | T,int->void accept(T t,U u)           | ObjAFunction은 입력이 T,A타입이고 출력은 없다  |
+
+
+
+기본형 관련된 함수형 인터페이스는 더 있음, 기본형 많이 사용할때 확인 필요
+
+
+
+### Function 합성 & Predicate의 결함
+
+Function<A,B> -> Funtion<B,C> 으로 연결 가능
+
+특정 Function 뒤는  andThen, 앞은 compose 사용
+
+```
+//스트링 16진수
+Function<String,Integer> f = (s)->Integer.parseInt(s,16);
+Function<Integer,String> g = (s)->Integer.toBinaryString(s);
+Function<String,String> r = f.andThen(g);
+```
+
+Predicate 는  and 와 or negate, isEqual의 함수가있음
+
+```
+Predicate<Integer> p = i->i<100;
+Predicate<Integer> q = i->i<200;
+Predicate<Integer> r = i->i%2==0;
+Predicate<Integer> notP=p.negate();//i>=100
+Predicate<Integer> all = notP.and(q.or(r));
+```
+
+
+
+## 메소드 참조
+
+하나의 메서드만 호출 하는 람다식은 클래스이름::메서드이름 or 참조변수::메서드 이름으로 변경가능
+
+| 종류                          | 람다                     | 메서드 참조       |
+| ----------------------------- | ------------------------ | ----------------- |
+| static메서드 참조             | (x)->ClassName.method(x) | ClassName::method |
+| 인스턴스메서드 참조           | (obj,x)->obj.method(x)   | ClassName::method |
+| 특정 객체 인스턴스메서드 참조 | (x)->obj.method(x)       | obj::method       |
+
+
+
+## 생성자 메서드 참조
+
+```
+//매개변수 X
+Supplier<MyClass> s = ()=>new MyClass();
+Supplier<MyClass> s = MyClass::new;
+//매개변수 1개
+Function<Integer,MyClass> f = (i)->new MyClass(i);
+Function<Integer,MyClass> f2 = MyClass::new;
+//매개변수 2개
+BiFunction<Integer,String,MyClass> bf= (i,s)->new MyClass(i,s);
+BiFunction<Integer,String,MyClass> bf2 = MyClass:new;
+
+```
+
+
+
+
+
+
+
+# 스트림
+
+모든 데이터를 모두 같은 방식으로 다루기위해 만들어짐 , 코드의 재사용성을 늘림
+
+- 스트림은 데이터 소스를 변경하지않음 (읽기만함)
+- 스트림은 일회용
+- 스트링연산
+  - 데이터소스 -> 스트림 -> 중간연산(distinct,limit,sorted...)->최종연산(forEach...)
+  - 최종연산이 되어야지만 작업 진행
+
+```
+//중간연산
+distinct() :중복제거
+filter(Predicate<T> predicate) : 조건에 안 맞는 요소 제외
+limit(long maxSize) : 스트림의 일부를 잘라냄
+skip(long n) : 일부 건너뜀
+peek(Consumer<T> action) : 스트림 요소에 작업 수행
+sorted()
+sorted(Comparator<T> comparator) : 스트림의 요소를 정렬한다.
+map(Function<T,R> mapper)
+flatmap(Function<T,Stream<R>> mapper) : 요소를 변환
+
+//최종연산
+forEach(Consumer<? super T action) : 각요소에 지정작업실행
+count() : 스트림 요소개수 반환
+max
+min
+findAny
+findFirst
+allMath
+anyMatch
+noneMatch
+toArray : 배열로
+reduce : 스트림요소를 줄여가면서 작업
+collect :요소를 모음 ->컬렉션에 담을때 사용
+
+
+```
+
+
+
+
+
+### 병렬 스트림
+
+스트림.parallel();
+
+순차적
+
+스트림.sequential();
+
+
+
+### 기본형 스트림
+
+Stream<Integer> 보다 효율(오토박싱&언박싱)좋고 기본형 관련함수가있음
+
+IntStream...
+
+
+
+난수 스트림 많이사용
+
+```
+IntStream i = new Random().ints();//Integer.MIN_VALUE<= <= Integer.MAX_VALUE
+IntStream i = new Random().ints(min,max);
+//무한 스트림이라 limit으로 유한스트림 변환필요
+i.limit(5).forEach(System.out::println);
+
+```
+
+
+
+### 파일 스트림
+
+```
+Stream<Path> Files.list(Path dir)
+```
+
+
+
+### 스트림 연결
+
+// 같은 타입
+
+Stream.concat(stream1,stream2);
+
+
+
+
+
+### Map
+
+특정 필드만 뽑아내거나 변환시 사용
+
+
+
+```
+//파일 이름 
+
+ Stream<File> fileStream = Stream.of(new File(),new File(),new File(),new File());
+ 
+ Stream<String> filenameStream = fileStream.map(File::getName);
+ filenameStream.forEach(System.out::println);
+
+
+```
+
+
+
+mapToInt() : IntStream
+
+mapToLong()
+
+mapToDouble()
+
+-> 기본형스트림으로 교체
+
+
+
+### peek 
+
+연산과 연산사이 확인
+
+
+
+
+
+###  FlatMap
+
+Stream을 펴줌 -> Stream 안에 Stream이 있거나 배열이 있을 경우 사용
+
+```java
+String[] strings = { "aaaa bbbb", "nnnn hhhh" };
+
+Stream<String> stream = Arrays.stream(strings);
+Stream<String[]> map = stream.map((s) -> s.split(" "));
+map.forEach(System.out::println);
+/*
+[Ljava.lang.String;@eed1f14
+[Ljava.lang.String;@7229724f
+*/
+Stream<String> stream2 = Arrays.stream(strings);
+Stream<String> flatMap = stream2.flatMap(s -> Arrays.stream(s.split(" ")));
+flatMap.forEach(System.out::println);
+/*
+aaaa
+bbbb
+nnnn
+hhhh
+*/
+
+Stream<Stream<String>> of = Stream.of(stream3, stream4);
+Stream<String[]> of2 = of.map(s -> s.toArray(String[]::new));
+Stream<String> flatMap2 = of2.flatMap(Arrays::stream);
+Stream<String> flatMap3 = flatMap2.flatMap(s -> Arrays.stream(s.split(" ")));
+flatMap3.forEach(System.out::println);
+/*
+
+aaaa
+bbbb
+nnnn
+hhhh
+aaaa
+bbbb
+nnnn
+hhhh
+
+*/
+```
+
