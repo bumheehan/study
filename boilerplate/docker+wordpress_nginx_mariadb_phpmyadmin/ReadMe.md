@@ -318,3 +318,6 @@ Removing wordpress ... done
 Removing mysql     ... done
 ```
 
+---
+## 부가정보
+phpmyadmin 에서 서버까지 쓰라고하면 mysql 입력
