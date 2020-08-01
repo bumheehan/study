@@ -1,0 +1,21 @@
+apiVersion : v1
+kind : Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.16.1 
+    imagePullPolicy: Never
+    volumeMounts:
+    - mountPath: /data/lablup
+      name: kubeconfig
+    ports:
+    - containerPort: 80
+  volumes:
+  - name: kubeconfig
+    hostPath:
+      path: /data/lablup
+      type: DirectoryOrCreate

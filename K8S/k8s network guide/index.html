@@ -1,0 +1,951 @@
+
+<!DOCTYPE html>
+<html lang="en" itemscope itemtype="http://schema.org/WebPage">
+  <head>
+    
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+  <title>A Guide to the Kubernetes Networking Model - Kevin Sookocheff</title>
+  <meta name="description" content="Kubernetes was built to run distributed systems over a cluster of machines. The very nature of distributed systems makes networking a central and necessary component of Kubernetes deployment, and understanding the Kubernetes networking model will allow you to correctly run, monitor and troubleshoot your applications running on Kubernetes.
+Networking is a vast space with a lot of mature technologies. For people unfamiliar with the landscape, this can be uncomfortable because most people have existing preconceived notions about networking, and there are a lot of both new and old concepts to understand and fit together into a coherent whole.">
+  <meta name="author" content="Kevin Sookocheff"/>
+
+  <meta name="generator" content="Hugo 0.69.2" />
+  <link rel="stylesheet" href="css/all.css" />
+  <link rel="stylesheet" href="css/bootstrap.min.css" /><link rel="stylesheet" href="css/main.css" /><link rel="stylesheet" href="https://sookocheff.com/css/fonts.css" /><link rel="stylesheet" href="https://sookocheff.com/css/syntax.css" /><link rel="stylesheet" href="https://sookocheff.com/css/codeblock.css" /><link rel="stylesheet" href="https://sookocheff.com/css/photoswipe.min.css" />
+  <link rel="stylesheet" href="css/photoswipe.default-skin.min.css" />
+
+    
+
+  </head>
+  <body>
+    
+  <header class="header-section ">
+    
+    <div class="intro-header no-img">
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+            <div class="post-heading">
+              
+                <h1>A Guide to the Kubernetes Networking Model</h1>
+              
+              
+              
+              
+                <span class="post-meta">
+  
+  
+  <i class="fas fa-calendar"></i>&nbsp;Posted on July 11, 2018
+  
+  
+    &nbsp;|&nbsp;<i class="fas fa-clock"></i>&nbsp;34&nbsp;minutes
+  
+  
+  
+    
+      &nbsp;|&nbsp;<i class="fas fa-user"></i>&nbsp;Kevin Sookocheff
+    
+  
+  
+</span>
+
+
+              
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+
+    
+<div class="container" role="main">
+  <div class="row">
+    <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+      <article role="main" class="blog-post">
+        <p>Kubernetes was built to run distributed systems over a cluster of
+machines. The very nature of distributed systems makes networking
+a central and necessary component of Kubernetes deployment, and
+understanding the Kubernetes networking model will allow you to correctly
+run, monitor and troubleshoot your applications running on Kubernetes.</p>
+<p>Networking is a vast space with a lot of mature technologies. For people
+unfamiliar with the landscape, this can be uncomfortable because most
+people have existing preconceived notions about networking, and there are
+a lot of both new and old concepts to understand and fit together into
+a coherent whole. A non-exhaustive list might include technologies like
+network namespaces, virtual interfaces, IP forwarding, and network address
+translation. This guide intends to demystify Kubernetes networking by
+discussing each of Kubernetes dependent technologies along with
+descriptions on how those technologies are used to enable the Kubernetes
+networking model.</p>
+<p>This guide is fairly long and divided in several sections. We start by
+discussing some basic Kubernetes terminology to ensure terms are being
+used correctly throughout the guide, then discuss the Kubernetes
+networking model and the design and implementation decisions that it
+imposes. This is followed by the longest and most interesting part of this
+guide: an in-depth discussion on how traffic is routed within Kubernetes
+using several different use cases.</p>
+<p>If any networking terminology is unfamiliar to you, there is a glossary of
+networking terms appended to this guide.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li>1 <a href="#kubernetes-basic">Kubernetes Basics</a></li>
+<li>2 <a href="#kubernetes-networking-model">The Kubernetes Networking Model</a></li>
+<li>3 <a href="#container-to-container">Container-to-Container Networking</a></li>
+<li>4 <a href="#pod-to-pod">Pod-to-Pod Networking</a></li>
+<li>5 <a href="#pod-to-service">Pod-to-Service Networking</a></li>
+<li>6 <a href="#internal-to-service">Internet-to-Service Networking</a>
+<ul>
+<li>6.1 <a href="#egress">Egress</a></li>
+<li>6.2 <a href="#egress">Ingress</a></li>
+</ul>
+</li>
+<li>7 <a href="#wrapping-up">Wrapping Up</a></li>
+<li>8 <a href="#glossary">Glossary</a></li>
+</ul>
+<h2 id="1-kubernetes-basics-a-namekubernetes-basicsa">1 Kubernetes Basics <a name="kubernetes-basics"></a></h2>
+<p>Kubernetes is built from a few core concepts that are combined into
+greater and greater functionality. This section lists each of these
+concepts and provides a brief overview to help facilitate the discussion.
+There is much more to Kubernetes than what is listed here, but this
+section should serve as a primer and allow the reader to follow along in
+later sections. If you are already familiar with Kubernetes, feel free to
+skip over this section.</p>
+<h3 id="11-kubernetes-api-server">1.1 Kubernetes API server</h3>
+<p>In Kubernetes, everything is an API call served by the <em>Kubernetes API
+server</em> (<code>kube-apiserver</code>). The API server is a gateway to an
+<a href="https://github.com/coreos/etcd">etcd</a> datastore that maintains the
+desired state of your application cluster. To update the state of
+a Kubernetes cluster, you make API calls to the API server describing your
+desired state.</p>
+<h3 id="12-controllers">1.2 Controllers</h3>
+<p><em>Controllers</em> are the core abstraction used to build Kubernetes. Once you’ve
+declared the desired state of your cluster using the API server,
+controllers ensure that the cluster’s current state matches the desired
+state by continuously watching the state of the API server and reacting to
+any changes. Controllers operate using a simple loop that continuously
+checks the current state of the cluster against the desired state of the
+cluster. If there are any differences, controllers perform tasks to make
+the current state match the desired state. In pseudo-code:</p>
+<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">
+<table style="border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
+</span><span style="margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">8
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">while</span> true:
+  X <span style="color:#f92672">=</span> currentState()
+  Y <span style="color:#f92672">=</span> desiredState()
+
+  <span style="color:#66d9ef">if</span> X <span style="color:#f92672">==</span> Y:
+    <span style="color:#66d9ef">return</span>  <span style="color:#75715e"># Do nothing</span>
+  <span style="color:#66d9ef">else</span>:
+    do(tasks to get to Y)
+</code></pre></td></tr></table>
+</div>
+</div><p>For example, when you create a new Pod using the API server, the
+Kubernetes scheduler (a controller) notices the change and makes
+a decision about where to place the Pod in the cluster. It then writes
+that state change using the API server (backed by etcd). The <code>kubelet</code> (a
+controller) then notices that new change and sets up the required
+networking functionality to make the Pod reachable within the cluster.
+Here, two separate controllers react to two separate state changes to make
+the reality of the cluster match the intention of the user.</p>
+<h3 id="13-pods">1.3 Pods</h3>
+<p>A Pod is the atom of Kubernetes — the smallest deployable object for
+building applications. A single Pod represents a running workload in your
+cluster and encapsulates one or more Docker containers, any required
+storage, and a unique IP address. Containers that make up a pod are
+designed to be co-located and scheduled on the same machine.</p>
+<h3 id="14-nodes">1.4 Nodes</h3>
+<p>Nodes are the machines running the Kubernetes cluster. These can be bare
+metal, virtual machines, or anything else. The word hosts is often used
+interchangeably with Nodes. I will try and use the term Nodes with
+consistency but will sometimes use the word Virtual Machine to refer to
+Nodes depending on context.</p>
+<h2 id="2-the-kubernetes-networking-model-a-namekubernetes-networking-modela">2 The Kubernetes Networking Model <a name="kubernetes-networking-model"></a></h2>
+<p>Kubernetes makes opinionated choices about how Pods are networked. In
+particular, Kubernetes dictates the following requirements on any
+networking implementation:</p>
+<ul>
+<li>all Pods can communicate with all other Pods without using <em>network
+address translation</em> (NAT).</li>
+<li>all Nodes can communicate with all Pods without NAT.</li>
+<li>the IP that a Pod sees itself as is the same IP that others see it
+as.</li>
+</ul>
+<p>Given these constraints, we are left with four distinct networking
+problems to solve:</p>
+<ol>
+<li>Container-to-Container networking</li>
+<li>Pod-to-Pod networking</li>
+<li>Pod-to-Service networking</li>
+<li>Internet-to-Service networking</li>
+</ol>
+<p>The rest of this guide will discuss each of these problems and their
+solutions in turn.</p>
+<h2 id="3-container-to-container-networking-a-namecontainer-to-containera">3 Container-to-Container Networking <a name="container-to-container"></a></h2>
+<p>Typically, we view network communication in a virtual machine as
+interacting directly with an Ethernet device, as in Figure 1.</p>
+
+<link rel="stylesheet" href="https://sookocheff.com/css/hugo-easy-gallery.css" />
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="eth0.png" alt="eth0.png"/>
+    </div>
+    <a href="eth0.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 1. Idealized view of an Ethernet device.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>In reality, the situation is more subtle than that. In Linux, each running
+process communicates within a <a href="http://man7.org/linux/man-pages/man8/ip-netns.8.html">network
+namespace</a> that
+provides a logical networking stack with its own routes, firewall rules,
+and network devices. In essence, a network namespace provides a brand new
+network stack for all the processes within the namespace.</p>
+<p>As a Linux user, network namespaces can be created using the <code>ip</code> command.
+For example, the following command will create a new network namespace
+called <code>ns1</code>.</p>
+<pre><code>$ ip netns add ns1
+</code></pre><p>When the namespace is created, a mount point for it is created under
+<code>/var/run/netns</code>, allowing the namespace to persist even if there is no
+process attached to it.</p>
+<p>You can list available namespaces by listing all the mount points under
+<code>/var/run/netns</code>, or by using the <code>ip</code> command.</p>
+<pre><code>$ ls /var/run/netns
+ns1
+$ ip netns
+ns1
+</code></pre><p>By default, Linux assigns every process to the root network namespace to
+provide access to the external world, as in Figure 2.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="root-namespace.png" alt="root-namespace.png"/>
+    </div>
+    <a href="root-namespace.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 2. The root network namespace.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>In terms of Docker constructs, a Pod is modelled as a group of Docker
+containers that share a network namespace. Containers within a Pod all
+have the same IP address and port space assigned through the network
+namespace assigned to the Pod, and can find each other via localhost since
+they reside in the same namespace. We can create a network namespace for
+each Pod on a virtual machine. This is implemented, using
+Docker, as a “Pod container” which holds the network namespace open while
+“app containers” (the things the user specified) join that namespace with
+Docker’s &ndash;net=container:<id> function. Figure 3 shows how each Pod is
+made up of multiple Docker containers (<code>ctr*</code>) within a shared namespace.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-namespace.png" alt="pod-namespace.png"/>
+    </div>
+    <a href="pod-namespace.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 3. A network namespace per pod.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>Applications within a Pod also have access to shared volumes, which are
+defined as part of a Pod and are made available to be mounted into each
+application’s filesystem.</p>
+<h2 id="4-pod-to-pod-networking-a-namepod-to-poda">4 Pod-to-Pod Networking <a name="pod-to-pod"></a></h2>
+<p>In Kubernetes, every Pod has a real IP address and each Pod communicates
+with other Pods using that IP address. The task at hand is to understand
+how Kubernetes enables Pod-to-Pod communication using real IPs, whether
+the Pod is deployed on the same physical Node or different Node in the
+cluster. We start this discussion by considering Pods that reside on
+the same machine to avoid the complications of going over the internal
+network to communicate across Nodes.</p>
+<p>From the Pod’s perspective, it exists in its own Ethernet namespace that
+needs to communicate with other network namespaces on the same Node.
+Thankfully, namespaces can be connected using a Linux <a href="http://man7.org/linux/man-pages/man4/veth.4.html">Virtual Ethernet
+Device</a> or <em>veth pair</em>
+consisting of two virtual interfaces that can be spread over multiple
+namespaces. To connect Pod namespaces, we can assign one side of the veth
+pair to the root network namespace, and the other side to the Pod’s
+network namespace. Each veth pair works like a patch cable, connecting the
+two sides and allowing traffic to flow between them. This setup can be
+replicated for as many Pods as we have on the machine. Figure 4 shows veth
+pairs connecting each Pod on a VM to the root namespace.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-veth-pairs.png" alt="pod-veth-pairs.png"/>
+    </div>
+    <a href="pod-veth-pairs.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 4. veth pairs per Pod.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>At this point, we’ve set up the Pods to each have their one network
+namespace so that they believe they have their own Ethernet device and IP
+address, and they are connected to the root namespace for the Node. Now,
+we want the Pods to talk to each other through the root namespace, and for
+this we use a network <em>bridge</em>.</p>
+<p>A Linux Ethernet bridge is a virtual Layer 2 networking device used to
+unite two or more network segments, working transparently to connect two
+networks together. The bridge operates by maintaining a forwarding table
+between sources and destinations by examining the destination of the data
+packets that travel through it and deciding whether or not to pass the
+packets to other network segments connected to the bridge. The bridging
+code decides whether to bridge data or to drop it by looking at the
+MAC-address unique to each Ethernet device in the network.</p>
+<p>Bridges implement the
+<a href="https://en.wikipedia.org/wiki/Address_Resolution_Protocol">ARP</a> protocol
+to discover the link-layer MAC address associated with a given IP address.
+When a data frame is received at the bridge, the bridge broadcasts the
+frame out to all connected devices (except the original sender) and the
+device that responds to the frame is stored in a lookup table. Future
+traffic with the same IP address uses the lookup table to discover the
+correct MAC address to forward the packet to.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pods-connected-by-bridge.png" alt="pods-connected-by-bridge.png"/>
+    </div>
+    <a href="pods-connected-by-bridge.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 5. Connecting namespaces using a bridge.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<h3 id="41-life-of-a-packet-pod-to-pod-same-node">4.1 Life of a packet: Pod-to-Pod, same Node</h3>
+<p>Given the network namespaces that isolate each Pod to their own networking
+stack, virtual Ethernet devices that connect each namespace to the root
+namespace, and a bridge that connects namespaces together, we are finally
+ready to send traffic between Pods on the same Node. This is illustrated
+in Figure 6.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-to-pod-same-node.gif" alt="pod-to-pod-same-node.gif"/>
+    </div>
+    <a href="pod-to-pod-same-node.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 6. Packets moving between Pods on the same Node.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>In Figure 6, Pod 1 sends a packet to its own Ethernet device <code>eth0</code> which
+is available as the default device for the Pod. For Pod 1, <code>eth0</code> is
+connected via a virtual Ethernet device to the root namespace, <code>veth0</code>
+(1). The bridge <code>cbr0</code> is configured with <code>veth0</code> a network segment
+attached to it. Once the packet reaches the bridge, the bridge resolves
+the correct network segment to send the packet to — <code>veth1</code> using the ARP
+protocol (3). When the packet reaches the virtual device <code>veth1</code>, it is
+forwarded directly to Pod 2’s namespace and the <code>eth0</code> device within that
+namespace (4). Throughout this traffic flow, each Pod is communicating
+only with <code>eth0</code> on <code>localhost</code> and the traffic is routed to the correct
+Pod. The development experience for using the network is the default
+behaviour that a developer would expect.</p>
+<p>Kubernetes’ networking model dictates that Pods must be reachable by their
+IP address <em>across</em> Nodes. That is, the IP address of a Pod is always
+visible to other Pods in the network, and each Pod views its own IP
+address as the same as how other Pods see it. We now turn to the problem
+of routing traffic between Pods on different Nodes.</p>
+<h3 id="42-life-of-a-packet-pod-to-pod-across-nodes">4.2 Life of a packet: Pod-to-Pod, across Nodes</h3>
+<p>Having worked out how to route packets between Pods on the same Node, we
+move on to routing traffic between Pods on different Nodes. The Kubernetes
+networking model requires that Pod IPs are reachable across the network,
+but it doesn’t specify how that must be done. In practice, this is network
+specific, but some patterns have been established to make this easier.</p>
+<p>Generally, every Node in your cluster is assigned a CIDR block specifying
+the IP addresses available to Pods running on that Node. Once traffic
+destined for the CIDR block reaches the Node it is the Node’s
+responsibility to forward traffic to the correct Pod. Figure 7 illustrates
+the flow of traffic between two Nodes <em>assuming that the network can route
+traffic in a CIDR block to the correct Node</em>.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-to-pod-different-nodes.gif" alt="pod-to-pod-different-nodes.gif"/>
+    </div>
+    <a href="pod-to-pod-different-nodes.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 7. Packets moving between Pods on different Nodes.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>Figure 7 begins with the same request as in Figure 6, except this time,
+the destination Pod (highlighted in green) is on a different Node from the
+source Pod (higlighted in blue). The packet begins by being sent through
+Pod 1’s Ethernet device which is paired with the virtual Ethernet device
+in the root namespace (1). Ultimately, the packet ends up at the root
+namespace’s network bridge (2). ARP will fail at the bridge because there
+is no device connected to the bridge with the correct MAC address for the
+packet. On failure, the bridge sends the packet out the default route
+— the root namespace’s <code>eth0</code> device. At this point the route leaves the
+Node and enters the network (3). We assume for now that the network can
+route the packet to the correct Node based on the CIDR block assigned to
+the Node (4). The packet enters the root namespace of the destination Node
+(<code>eth0</code> on VM 2), where it is routed through the bridge to the correct
+virtual Ethernet device (5). Finally, the route completes by flowing
+through the virtual Ethernet device’s pair residing within Pod 4’s
+namespace (6). Generally speaking, each Node knows how to deliver packets
+to Pods that are running within it. Once a packet reaches a destination
+Node, packets flow the same way they do for routing traffic between Pods
+on the same Node.</p>
+<p>We conveniently side-stepped how to configure the network to route traffic
+for Pod IPs to the correct Node that is responsible for those IPs. This is
+network specific, but looking at a specific example will provide some
+insight into the issues involved. For example, with AWS, Amazon maintains
+a container networking plugin for Kubernetes that allows Node to Node
+networking to operate within an Amazon VPC environment using a [Container
+Networking Interface (CNI) plugin]
+(<a href="https://github.com/aws/amazon-vpc-cni-k8s)">https://github.com/aws/amazon-vpc-cni-k8s)</a>.</p>
+<p>The Container Networking Interface (CNI) provides a common API for
+connecting containers to the outside network. As developers, we want to
+know that a Pod can communicate with the network using IP addresses, and
+we want the mechanism for this action to be transparent. The CNI plugin
+developed by AWS tries to meet these needs while providing a secure and
+manageable environment through the existing VPC, IAM, and Security Group
+functionality provided by AWS. The solution to this is using elastic
+network interfaces.</p>
+<p>In EC2, each instance is bound to an elastic network interface (ENI) and
+all ENIs are connected within a VPC — ENIs are able to reach each other
+without additional effort. By default, each EC2 instance is deployed with
+a single ENI, but you are free to create multiple ENIs and deploy them to
+EC2 instances as you see fit. The AWS CNI plugin for Kubernetes leverages
+this flexibility by creating a new ENI for each Pod deployed to a Node.
+Because ENIs within a VPC are already connected within the existing AWS
+infrastructure, this allows each Pod’s IP address to be natively
+addressable within the VPC. When the CNI plugin is deployed to the
+cluster, each Node (EC2 instance) creates multiple elastic network
+interfaces and allocates IP addresses to those instances, forming a CIDR
+block for each Node. When Pods are deployed, a small binary deployed to
+the Kubernetes cluster as a DaemonSet receives any requests to add a Pod
+to the network from the Nodes local <code>kubelet</code> process. This binary picks
+an available IP address from the Node’s available pool of ENIs and assigns
+it to the Pod by wiring the virtual Ethernet device and bridge within the
+Linux kernel as described when networking Pods within the same Node. With
+this in place, Pod traffic is routeable across Nodes within the cluster.</p>
+<h2 id="5-pod-to-service-networking-a-namepod-to-servicea">5 Pod-to-Service Networking <a name="pod-to-service"></a></h2>
+<p>We’ve shown how to route traffic between Pods and their associated IP
+addresses. This works great until we need to deal with change. Pod IP
+addresses are not durable and will appear and disappear in response to
+scaling up or down, application crashes, or Node reboots. Each of these
+events can make the Pod IP address change without warning. <em>Services</em> were
+built into Kubernetes to address this problem.</p>
+<p>A Kubernetes <em>Service</em> manages the state of a set of Pods, allowing you to
+track a set of Pod IP addresses that are dynamically changing over time.
+Services act as an abstraction over Pods and assign a single virtual IP
+address to a group of Pod IP addresses. Any traffic addressed to the
+virtual IP of the Service will be routed to the set of Pods that are
+associated with the virtual IP. This allows the set of Pods associated
+with a Service to change at any time — clients only need to know the
+Service’s virtual IP, which does not change.</p>
+<p>When creating a new Kubernetes Service, a new virtual IP (also known as
+a cluster IP) is created on your behalf. Anywhere within the cluster,
+traffic addressed to the virtual IP will be load-balanced to the set of
+backing Pods associated with the Service. In effect, Kubernetes
+automatically creates and maintains a distributed in-cluster load balancer
+that distributes traffic to a Service’s associated healthy Pods. Let’s
+take a closer look at how this works.</p>
+<h3 id="51-netfilter-and-iptables">5.1 netfilter and iptables</h3>
+<p>To perform load balancing within the cluster, Kubernetes relies on the
+networking framework built in to Linux — <code>netfilter</code>. Netfilter is
+a framework provided by Linux that allows various networking-related
+operations to be implemented in the form of customized handlers. Netfilter
+offers various functions and operations for packet filtering, network
+address translation, and port translation, which provide the functionality
+required for directing packets through a network, as well as for providing
+the ability to prohibit packets from reaching sensitive locations within
+a computer network.</p>
+<p><code>iptables</code> is a user-space program providing a table-based system for
+defining rules for manipulating and transforming packets using the
+netfilter framework. In Kubernetes, iptables rules are configured by the
+kube-proxy controller that watches the Kubernetes API server for changes.
+When a change to a Service or Pod updates the virtual IP address of the
+Service or the IP address of a Pod, iptables rules are updated to
+correctly route traffic directed at a Service to a backing Pod. The
+iptables rules watch for traffic destined for a Service’s virtual IP and,
+on a match, a random Pod IP address is selected from the set of available
+Pods and the iptables rule changes the packet’s destination IP address
+from the Service’s virtual IP to the IP of the selected Pod. As Pods come
+up or down, the iptables ruleset is updated to reflect the changing state
+of the cluster. Put another way, iptables has done load-balancing on the
+machine to take traffic directed to a service’s IP to an actual pod’s IP.</p>
+<p>On the return path, the IP address is coming from the destination Pod. In
+this case iptables again rewrites the IP header to replace the Pod IP with
+the Service’s IP so that the Pod believes it has been communicating solely
+with the Service’s IP the entire time.</p>
+<h3 id="52-ipvs">5.2 IPVS</h3>
+<p>The latest release (1.11) of Kubernetes includes a second option for
+in-cluster load balancing: IPVS. IPVS (IP Virtual Server) is also built on
+top of netfilter and implements transport-layer load balancing as part of
+the Linux kernel. IPVS is incorporated into the LVS (Linux Virtual
+Server), where it runs on a host and acts as a load balancer in front of
+a cluster of real servers. IPVS can direct requests for TCP- and UDP-based
+services to the real servers, and make services of the real servers appear
+as virtual services on a single IP address. This makes IPVS a natural fit
+for Kubernetes Services.</p>
+<p>When declaring a Kubernetes Service, you can specify whether or not you
+want in-cluster load balancing to be done using iptables or IPVS. IPVS is
+specifically designed for load balancing and uses more efficient data
+structures (hash tables), allowing for almost unlimited scale compared to
+iptables. When creating a Service load balanced with IPVS, three things
+happen: a dummy IPVS interface is created on the Node, the Service’s IP
+address is bound to the dummy IPVS interface, and IPVS servers are created
+for each Service IP address.</p>
+<p>In the future, expect IPVS to become the default method of in-cluster
+load-balancing. This change only affects in-cluster load-balancing and
+throughout the rest of this guide you can safely replace iptables with
+IPVS for in-cluster load balancing without affecting the rest of the
+discussion. Let’s now look at the life of a packet through an in-cluster
+load-balanced Service</p>
+<h3 id="53-life-of-a-packet-pod-to-service">5.3 Life of a packet: Pod to Service</h3>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-to-service.gif" alt="pod-to-service.gif"/>
+    </div>
+    <a href="pod-to-service.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 8. Packets moving between Pods and Services.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>When routing a packet between a Pod and Service, the journey begins in the
+same way as before. The packet first leaves the Pod through the <code>eth0</code>
+interface attached to the Pod’s network namespace (1). Then it travels
+through the virtual Ethernet device to the bridge (2). The ARP protocol
+running on the bridge does not know about the Service and so it transfers
+the packet out through the default route — <code>eth0</code> (3). Here, something
+different happens. Before being accepted at <code>eth0</code>, the packet is filtered
+through iptables. After receiving the packet, iptables uses the rules
+installed on the Node by kube-proxy in response to Service or Pod events
+to rewrite the destination of the packet from the Service IP to a specific
+Pod IP (4). The packet is now destined to reach Pod 4 rather than the
+Service’s virtual IP. The Linux kernel’s <code>conntrack</code> utility is leveraged
+by iptables to remember the Pod choice that was made so future traffic
+is routed to the same Pod (barring any scaling events). In essence,
+iptables has done in-cluster load balancing directly on the Node. Traffic
+then flows to the Pod using the Pod-to-Pod routing we’ve already examined
+(5).</p>
+<h3 id="54-life-of-a-packet-service-to-pod">5.4 Life of a packet: Service to Pod</h3>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="service-to-pod.gif" alt="service-to-pod.gif"/>
+    </div>
+    <a href="service-to-pod.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 9. Packets moving between Services and Pods.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>The Pod that receives this packet will respond, identifying the source IP
+as its own and the destination IP as the Pod that originally sent the
+packet (1). Upon entry into the Node, the packet flows through iptables,
+which uses <code>conntrack</code> to remember the choice it previously made and
+rewrite the source of the packet to be the Service’s IP instead of the
+Pod’s IP (2). From here, the packet flows through the bridge to the
+virtual Ethernet device paired with the Pod’s namespace (3), and to the
+Pod’s Ethernet device as we’ve seen before (4).</p>
+<h3 id="55-using-dns">5.5 Using DNS</h3>
+<p>Kubernetes can optionally use DNS to avoid having to hard-code a Service’s
+cluster IP address into your application. Kubernetes DNS runs as a regular
+Kubernetes Service that is scheduled on the cluster. It configures the
+<code>kubelets</code> running on each Node so that containers use the DNS Service’s
+IP to resolve DNS names. Every Service defined in the cluster (including
+the DNS server itself) is assigned a DNS name. DNS records resolve DNS
+names to the cluster IP of the Service or the IP of a POD, depending on
+your needs. SRV records are used to specify particular named ports for
+running Services.</p>
+<p>A DNS Pod consists of three separate containers:</p>
+<ul>
+<li><code>kubedns</code>: watches the Kubernetes master for changes in Services and
+Endpoints, and maintains in-memory lookup structures to serve DNS
+requests.</li>
+<li><code>dnsmasq</code>: adds DNS caching to improve performance.</li>
+<li><code>sidecar</code>: provides a single health check endpoint to perform
+healthchecks for <code>dnsmasq</code> and <code>kubedns</code>.</li>
+</ul>
+<p>The DNS Pod itself is exposed as a Kubernetes Service with a static
+cluster IP that is passed to each running container at startup so that
+each container can resolve DNS entries. DNS entries are resolved through
+the <code>kubedns</code> system that maintains in-memory DNS representations. <code>etcd</code>
+is the backend storage system for cluster state, and <code>kubedns</code> uses
+a library that converts <code>etcd</code> key-value stores to DNS entires to rebuild
+the state of the in-memory DNS lookup structure when necessary.</p>
+<p>CoreDNS works similarly to <code>kubedns</code> but is built with a plugin
+architecture that makes it more flexible. As of Kubernetes 1.11, CoreDNS
+is the default DNS implementation for Kubernetes.</p>
+<h2 id="6-internet-to-service-networking-a-nameinternal-to-servicea">6 Internet-to-Service Networking <a name="internal-to-service"></a></h2>
+<p>So far we have looked at how traffic is routed <em>within</em> a Kubernetes
+cluster. This is all fine and good but unfortunately walling off your
+application from the outside world will not help meet any sales targets
+— at some point you will want to expose your service to external traffic.
+This need highlights two related concerns: (1) getting traffic from
+a Kubernetes Service out to the Internet, and (2) getting traffic from the
+Internet to your Kubernetes Service. This section deals with each of these
+concerns in turn.</p>
+<h3 id="61-egress--routing-traffic-to-the-internet-a-nameegressa">6.1 Egress — Routing traffic to the Internet <a name="egress"></a></h3>
+<p>Routing traffic from a Node to the public Internet is network specific and
+really depends on how your network is configured to publish traffic. To
+make this section more concrete I will use an AWS VPC to discuss any
+specific details.</p>
+<p>In AWS, a Kubernetes cluster runs within a VPC, where every Node is
+assigned a private IP address that is accessible from within the
+Kubernetes cluster. To make traffic accessible from outside the cluster,
+you attach an Internet gateway to your VPC. The Internet gateway serves
+two purposes: providing a target in your VPC route tables for traffic that
+can be routed to the Internet, and performing network address translation
+(NAT) for any instances that have been assigned public IP addresses. The
+NAT translation is responsible for changing the Node’s internal IP address
+that is private to the cluster to an external IP address that is available
+in the public Internet.</p>
+<p>With an Internet gateway in place, VMs are free to route traffic to the
+Internet. Unfortunately, there is a small problem. Pods have their own IP
+address that is not the same as the IP address of the Node that hosts the
+Pod, and the NAT translation at the Internet gateway only works with VM IP
+addresses because it does not have any knowledge about what Pods are
+running on which VMs — the gateway is not <em>container aware</em>. Let’s look at
+how Kubernetes solves this problem using iptables (again).</p>
+<h4 id="611-life-of-a-packet-node-to-internet">6.1.1 Life of a packet: Node to Internet</h4>
+<p>In the following diagram, the packet originates at the Pod’s namespace (1)
+and travels through the veth pair connected to the root namespace (2).
+Once in the root namespace, the packet moves from the bridge to the
+default device since the IP on the packet does not match any network
+segment connected to the bridge. Before reaching the root namespace’s
+Ethernet device (3), iptables mangles the packet (3). In this case, the
+source IP address of the packet is a Pod, and if we keep the source as
+a Pod the Internet gateway will reject it because the gateway NAT only
+understands IP addresses that are connected to VMs. The solution is to
+have iptables perform a source NAT — changing the packet source — so that
+the packet appears to be coming from the VM and not the Pod. With the
+correct source IP in place, the packet can now leave the VM (4) and reach
+the Internet gateway (5). The Internet gateway will do another NAT
+rewriting the source IP from a VM internal IP to an external IP. Finally,
+the packet will reach the public Internet (6). On the way back, the packet
+follows the same path and any source IP mangling is undone so that each
+layer of the system receives the IP address that it understands:
+VM-internal at the Node or VM level, and a Pod IP within a Pod’s
+namespace.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="pod-to-internet.gif" alt="pod-to-internet.gif"/>
+    </div>
+    <a href="pod-to-internet.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 10. Routing packets from Pods to the Internet.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<h3 id="62-ingress--routing-internet-traffic-to-kubernetes-a-nameingressa">6.2 Ingress — Routing Internet traffic to Kubernetes <a name="ingress"></a></h3>
+<p>Ingress — getting traffic into your cluster — is a surprisingly tricky
+problem to solve. Again, this is specific to the network you are running,
+but in general, Ingress is divided into two solutions that work on
+different parts of the network stack: (1) a Service LoadBalancer and (2)
+an Ingress controller.</p>
+<h4 id="621-layer-4-ingress-loadbalancer">6.2.1 Layer 4 Ingress: LoadBalancer</h4>
+<p>When you create a Kubernetes Service you can optionally specify
+a LoadBalancer to go with it. The implementation of the LoadBalancer is
+provided by a <em>cloud controller</em> that knows how to create a load balancer
+for your service. Once your Service is created, it will advertise the IP
+address for the load balancer. As an end user, you can start directing
+traffic to the load balancer to begin communicating with your Service.</p>
+<p>With AWS, load balancers are aware of Nodes within their Target Group and
+will balance traffic throughout all of the Nodes in the cluster. Once
+traffic reaches a Node, the iptables rules previously installed throughout
+the cluster for your Service will ensure that traffic reaches the Pods for
+the Service you are interested in.</p>
+<h4 id="622-life-of-a-packet-loadbalancer-to-service">6.2.2 Life of a packet: LoadBalancer to Service</h4>
+<p>Let’s look at how this works in practice. Once you deploy your service,
+a new load balancer will be created for you by the cloud provider you are
+working with (1). Because the load balancer is not container aware, once
+traffic reaches the load-balancer it is distributed throughout the VMs
+that make up your cluster (2). iptables rules on each VM will direct
+incoming traffic from the load balancer to the correct Pod (3) — these are
+the same IP tables rules that were put in place during Service creation
+and discussed earlier. The response from the Pod to the client will return
+with the Pod’s IP, but the client needs to have the load balancer’s IP
+address. iptables and <code>conntrack</code> is used to rewrite the IPs correctly on
+the return path, as we saw earlier.</p>
+<p>The following diagram shows a network load balancer in front of three VMs
+that host your Pods. Incoming traffic (1) is directed at the load balancer
+for your Service. Once the load balancer receives the packet (2) it picks
+a VM at random. In this case, we’ve chosen pathologically the VM with no
+Pod running: VM 2 (3). Here, the iptables rules running on the VM will
+direct the packet to the correct Pod using the internal load balancing
+rules installed into the cluster using kube-proxy. iptables does the
+correct NAT and forwards the packet on to the correct Pod (4).</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="internet-to-service.gif" alt="internet-to-service.gif"/>
+    </div>
+    <a href="internet-to-service.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 11. Packets sent from the Internet to a Service.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<h4 id="623-layer-7-ingress-ingress-controller">6.2.3 Layer 7 Ingress: Ingress Controller</h4>
+<p>Layer 7 network Ingress operates on the HTTP/HTTPS protocol range of the
+network stack and is built on top of Services. The first step to enabling
+Ingress is to open a port on your Service using the <code>NodePort</code> Service
+type in Kubernetes. If you set the Service’s type field to NodePort, the
+Kubernetes master will allocate a port from a range you specify, and each
+Node will proxy that port (the same port number on every Node) into your
+Service. That is, any traffic directed to the Node’s port will be
+forwarded on to the service using iptables rules. This Service to Pod
+routing follows the same internal cluster load-balancing pattern we’ve
+already discussed when routing traffic from Services to Pods.</p>
+<p>To expose a Node’s port to the Internet you use an Ingress object. An
+Ingress is a higher-level HTTP load balancer that maps HTTP requests to
+Kubernetes Services. The Ingress method will be different depending on how
+it is implemented by the Kubernetes cloud provider controller. HTTP load
+balancers, like Layer 4 network load balancers, only understand Node IPs
+(not Pod IPs) so traffic routing similarly leverages the internal
+load-balancing provided by the iptables rules installed on each Node by
+kube-proxy.</p>
+<p>Within an AWS environment, the ALB Ingress Controller provides Kubernetes
+Ingress using Amazon’s Layer 7 Application Load Balancer. The following
+diagram details the AWS components this controller creates. It also
+demonstrates the route Ingress traffic takes from the ALB to the
+Kubernetes cluster.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="ingress-controller-design.png" alt="ingress-controller-design.png"/>
+    </div>
+    <a href="ingress-controller-design.png" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 12. Design of an Ingress Controller.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>Upon creation, (1) an Ingress Controller watches for Ingress events from
+the Kubernetes API server. When it finds Ingress resources that satisfy
+its requirements, it begins the creation of AWS resources. AWS uses an
+Application Load Balancer (ALB) (2) for Ingress resources. Load balancers
+work in conjunction with Target Groups that are used to route requests to
+one or more registered Nodes. (3) Target Groups are created in AWS for
+each unique Kubernetes Service described by the Ingress resource. (4)
+A Listener is an ALB process that checks for connection requests using the
+protocol and port that you configure. Listeners are created by the Ingress
+controller for every port detailed in your Ingress resource annotations.
+Lastly, Target Group Rules are created for each path specified in your
+Ingress resource. This ensures traffic to a specific path is routed to the
+correct Kubernetes Service (5).</p>
+<h4 id="624-life-of-a-packet-ingress-to-service">6.2.4 Life of a packet: Ingress to Service</h4>
+<p>The life of a packet flowing through an Ingress is very similar to that of
+a LoadBalancer. The key differences are that an Ingress is aware of the
+URL’s path (allowing and can route traffic to services based on their
+path), and that the initial connection between the Ingress and the Node is
+through the port exposed on the Node for each service.</p>
+<p>Let’s look at how this works in practice. Once you deploy your service,
+a new Ingress load balancer will be created for you by the cloud provider
+you are working with (1). Because the load balancer is not container
+aware, once traffic reaches the load-balancer it is distributed throughout
+the VMs that make up your cluster (2) through the advertised port for your
+service. iptables rules on each VM will direct incoming traffic from the
+load balancer to the correct Pod (3) — as we have seen before. The
+response from the Pod to the client will return with the Pod’s IP, but the
+client needs to have the load balancer’s IP address. iptables and
+<code>conntrack</code> is used to rewrite the IPs correctly on the return path, as we
+saw earlier.</p>
+
+
+<div class="box" >
+  <figure  itemprop="associatedMedia" itemscope itemtype="http://schema.org/ImageObject">
+    <div class="img">
+      <img itemprop="thumbnail" src="ingress-to-service.gif" alt="ingress-to-service.gif"/>
+    </div>
+    <a href="ingress-to-service.gif" itemprop="contentUrl"></a>
+      <figcaption><h4>Figure 13. Packets sent from an Ingress to a Service.</h4>
+      </figcaption>
+  </figure>
+</div>
+
+<p>One benefit of Layer 7 load-balancers are that they are HTTP aware, so
+they know about URLs and paths. This allows you you to segment your
+Service traffic by URL path. They also typically provide the original
+client’s IP address in the <code>X-Forwarded-For</code> header of the HTTP request.</p>
+<h2 id="7-wrapping-up-a-namewrapping-upa">7 Wrapping Up <a name="wrapping-up"></a></h2>
+<p>This guide provides a foundation for understanding the Kubernetes
+networking model and how it enables common networking tasks. The field of
+networking is both broad and deep and it’s impossible to cover everything
+here. This guide should give you a starting point to dive into the topics
+you are interested in and want to know more about. Whenever you are
+stumped, leverage the Kubernetes documentation and the Kubernetes
+community to help you find your way.</p>
+<h2 id="8-glossary-a-nameglossarya">8 Glossary <a name="glossary"></a></h2>
+<p>Kubernetes relies on several existing technologies to build a functioning
+cluster. Fully exploring each of these technologies is beyond the scope of
+this guide, but this section describes each of those technologies in
+enough detail to follow along with the discussion. You can feel free to
+skim this section, skip it completely, or refer to it as needed if you
+ever get confused or need a refresher.</p>
+<h3 id="layer-2-networking">Layer 2 Networking</h3>
+<p>Layer 2 is the data link layer providing Node-to-Node data transfer. It
+defines the protocol to establish and terminate a connection between two
+physically connected devices. It also defines the protocol for flow
+control between them.</p>
+<h3 id="layer-4-networking">Layer 4 Networking</h3>
+<p>The transport layer controls the reliability of a given link through flow
+control. In TCP/IP, this layer refers to the TCP protocol for exchanging
+data over an unreliable network.</p>
+<h3 id="layer-7-networking">Layer 7 Networking</h3>
+<p>The application layer is the layer closest to the end user, which
+means both the application layer and the user interact directly with
+the software application. This layer interacts with software applications
+that implement a communicating component. Typically, Layer 7 Networking
+refers to HTTP.</p>
+<h3 id="nat--network-address-translation">NAT — Network Address Translation</h3>
+<p>NAT or <em>network address translation</em> is an IP-level remapping of one
+address space into another. The mapping happens by modifying network
+address information in the IP header of packets while they are in transit
+across a traffic routing device.</p>
+<p>A basic NAT is a simple mapping from one IP address to another. More
+commonly, NAT is used to map multiple private IP address into one publicly
+exposed IP address. Typically, a local network uses a private IP address
+space and a router on that network is given a private address in that
+space. The router is then connected to the Internet with a public IP
+address. As traffic is passed from the local network to the Internet, the
+source address for each packet is translated from the private address to
+the public address, making it seem as though the request is coming
+directly from the router. The router maintains connection tracking to
+forward replies to the correct private IP on the local network.</p>
+<p>NAT provides an additional benefit of allowing large private networks to
+connect to the Internet using a single public IP address, thereby
+conserving the number of publicly used IP addresses.</p>
+<h4 id="snat--source-network-address-translation">SNAT — Source Network Address Translation</h4>
+<p>SNAT simply refers to a NAT procedure that modifies the source address of
+an IP packet. This is the typical behaviour for the NAT described above.</p>
+<h4 id="dnat--destination-network-address-translation">DNAT — Destination Network Address Translation</h4>
+<p>DNAT refers to a NAT procedure that modifies the destination address of
+an IP packet. DNAT is used to publish a service resting in a private network to
+a publicly addressable IP address.</p>
+<h3 id="network-namespace">Network Namespace</h3>
+<p>In networking, each machine (real or virtual) has an Ethernet device (that
+we will refer to as <code>eth0</code>). All traffic flowing in and out of the machine
+is associated with that device. In truth, Linux associates each Ethernet
+device with a <em>network namespace</em> — a logical copy of the entire network
+stack, with its own routes, firewall rules, and network devices.
+Initially, all the processes share the same default network namespace from
+the init process, called the root namespace. By default, a process
+inherits its network namespace from its parent and so, if you don’t make
+any changes, all network traffic flows through the Ethernet device
+specified for the root network namespace.</p>
+<h3 id="veth--virtual-ethernet-device-pairs">veth — Virtual Ethernet Device Pairs</h3>
+<p>Computer systems typically consist of one or more networking devices
+— eth0, eth1, etc — that are associated with a physical network adapter
+which is responsible for placing packets onto the physical wire. Veth
+devices are virtual network devices that are always created in
+interconnected pairs. They can act as tunnels between network namespaces
+to create a bridge to a physical network device in another namespace, but
+can also be used as standalone network devices. You can think of a veth
+device as a virtual patch cable between devices — what goes in one end
+will come out the other.</p>
+<h3 id="bridge--network-bridge">bridge — Network Bridge</h3>
+<p>A network bridge is a device that creates a single aggregate network from
+multiple communication networks or network segments. Bridging connects two
+separate networks as if they were a single network. Bridging uses an
+internal data structure to record the location that each packet is sent to
+as a performance optimization.</p>
+<h3 id="cidr--classless-inter-domain-routing">CIDR — Classless Inter-Domain Routing</h3>
+<p>CIDR is a method for allocating IP addresses and performing IP routing.
+With CIDR, IP addresses consist of two groups: the network prefix (which
+identifies the whole network or subnet), and the host identifier (which
+specifies a particular interface of a host on that network or subnet).
+CIDR represents IP addresses using CIDR notation, in which an address or
+routing prefix is written with a suffix indicating the number of bits of
+the prefix, such as 192.0.2.0/24 for IPv4. An IP address is part of a CIDR
+block, and is said to belong to the CIDR block if the initial n bits of
+the address and the CIDR prefix are the same.</p>
+<h3 id="cni--container-network-interface">CNI — Container Network Interface</h3>
+<p>CNI (Container Network Interface) is a Cloud Native Computing Foundation
+project consisting of a specification and libraries for writing plugins to
+configure network interfaces in Linux containers. CNI concerns itself only
+with network connectivity of containers and removing allocated resources
+when the container is deleted.</p>
+<h3 id="vip--virtual-ip-address">VIP — Virtual IP Address</h3>
+<p>A virtual IP address, or VIP, is a software-defined IP address that
+doesn&rsquo;t correspond to an actual physical network interface.</p>
+<h3 id="netfilter--the-packet-filtering-framework-for-linux">netfilter — The Packet Filtering Framework for Linux</h3>
+<p>netfilter is the packet filtering framework in Linux. The software
+implementing this framework is responsible for packet filtering, network
+address translation (NAT), and other packet mangling.</p>
+<p>netfilter, ip_tables, connection tracking (ip_conntrack, nf_conntrack) and
+the NAT subsystem together build the major parts of the framework.</p>
+<h3 id="iptables--packet-mangling-tool">iptables — Packet Mangling Tool</h3>
+<p>iptables is a program that allows a Linux system administrator to
+configure the netfilter and the chains and rules it stores. Each rule
+within an IP table consists of a number of classifiers (iptables matches)
+and one connected action (iptables target).</p>
+<h3 id="conntrack--connection-tracking">conntrack — Connection Tracking</h3>
+<p>conntrack is a tool built on top of the Netfilter framework to handle
+connection tracking. Connection tracking allows the kernel to keep track
+of all logical network connections or sessions, and direct packets for
+each connection or session to the correct sender or receiver. NAT relies
+on this information to translate all related packets in the same way, and
+iptables can use this information to act as a stateful firewall.</p>
+<h3 id="ipvs--ip-virtual-server">IPVS — IP Virtual Server</h3>
+<p>IPVS implements transport-layer load balancing as part of the Linux
+kernel.</p>
+<p>IPVS is a tool similar to iptables. It is based on the Linux kernel’s
+netfilter hook function, but uses a hash table as the underlying data
+structure. That means, when compared to iptables, IPVS redirects traffic
+much faster, has much better performance when syncing proxy rules, and
+provides more load balancing algorithms.</p>
+<h3 id="dns--the-domain-name-system">DNS — The Domain Name System</h3>
+<p>The Domain Name System (DNS) is a decentralized naming system for
+associating system names with IP addresses. It translates domain names to
+numerical IP addresses for locating computer services.</p>
+
+
+     
+
+          
+        
+      </article>
+
+      
+  </body>
+</html>
+
