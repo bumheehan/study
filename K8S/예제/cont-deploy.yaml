@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginxd
+  labels:
+    app: nginxdl
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginxc
+        image: nginx
+        ports:
+        - containerPort: 80
+      - name: echoc
+        image: k8s.gcr.io/echoserver:1.10
+        ports:
+        - containerPort: 8080

@@ -1,0 +1,55 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: collect-agent
+  labels:
+    app: collect-agent
+    tier: backend
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: collect-agent
+        tier: backend
+    spec:
+      containers:
+      - name: collect-agent
+        image: collect-agent:v1.0.7.9.0
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: JAVA_OPTS
+          value: -Xms1g -Xmx1g
+        - name: MODEL
+          value: "2000"
+        ports:
+        - containerPort: 8457
+          name: collectport
+        livenessProbe:
+          tcpSocket:
+            port: 8457
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 15
+        volumeMounts:
+        - name: targos-storage
+          mountPath: /opt/obapps/targos/relay/data
+        - mountPath: /root/.kube
+          name: kubeconfig-volume
+        - mountPath: /data/lablup
+          name: lablup-volume
+      volumes:
+      - name: targos-storage
+        persistentVolumeClaim:
+          claimName: targos-pv-claimi
+      - name: kubeconfig-volume
+        hostPath:
+          path: /root/.kube
+          type: Directory
+      - name: lablup-volume
+        hostPath:
+          path: /data/lablup
+          type: DirectoryOrCreate

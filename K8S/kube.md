@@ -597,18 +597,593 @@ spec:
 
 ### ClusterIP
 클러스터 내부에서만 사용, 클러스터 외부에서는 사용못함
-- veth 생성과정  
+- DNAT만 적용
+  - dest 변경 : ip(clusterIP),port(port) -> ip(PodIP) , port(target port)
+
+- 예제
+
+pod 80,8080 포트열림 ClusterIP 두개
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginxd
+  labels:
+    app: nginxdl
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginxc
+        image: nginx
+        ports:
+        - containerPort: 80
+      - name: echoc
+        image: k8s.gcr.io/echoserver:1.10
+        ports:
+        - containerPort: 8080
+
+----
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginxsvc
+spec:
+  type : ClusterIP # 기본값 ClusterIP
+  clusterIP: 10.96.0.20 # 없으면 자동할당
+  selector:  # 파드 셀렉터
+    app: nginx
+  ports:
+    - name: nginx
+      protocol: TCP
+      port: 10080
+      targetPort: 80 # container port 
+    - name: echo
+      protocol: TCP
+      port: 18080
+      targetPort: 8080 # container port
+```
+
+- 엔드포인트보면 정상적으로 표현()
+```
+PS E:\git\study\K8S\예제> kubectl describe svc nginxsvc
+Name:              nginxsvc
+Namespace:         default
+Labels:            <none>
+Annotations:       kubectl.kubernetes.io/last-applied-configuration:
+                     {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"nginxsvc","namespace":"default"},"spec":{"clusterIP":"10.96.0.20"...
+Selector:          app=nginx
+Type:              ClusterIP
+IP:                10.96.0.20
+Port:              http  10080/TCP
+TargetPort:        80/TCP
+Endpoints:         10.1.0.96:80,10.1.0.97:80,10.1.0.98:80
+Port:              https  18080/TCP
+TargetPort:        8080/TCP
+Endpoints:         10.1.0.96:8080,10.1.0.97:8080,10.1.0.98:8080
+Session Affinity:  None
+Events:            <none>
+```
+
+
+
+- 결과
+
+```
+
+$ kubectl run -it --image  nicolaka/netshoot testnet bash
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+If you don't see a command prompt, try pressing enter.
+
+# nginx 접속
+bash-5.0# curl -XGET http://10.96.0.20:10080
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+...
+</head>
+<body>
+...
+</body>
+</html>
+
+
+# ehco server 접속
+bash-5.0# curl -XGET http://10.96.0.20:18080
+
+
+Hostname: nginxd-67b9764bf8-d6vmx
+
+Pod Information:
+        -no pod information available-
+
+Server values:
+        server_version=nginx: 1.13.3 - lua: 10008
+
+Request Information:
+        client_address=10.1.0.99
+        method=GET
+        real path=/
+        query=
+        request_version=1.1
+        request_scheme=http
+        request_uri=http://10.96.0.20:8080/
+
+Request Headers:
+        accept=*/*
+        host=10.96.0.20:18080
+        user-agent=curl/7.71.1
+
+Request Body:
+        -no body in request-
+
+```
+
+- IP가 잘못되면 알려줌
+
+```
+PS E:\git\study\K8S\예제> kubectl apply -f .\svc-cluster.yaml
+
+The Service "nginxsvc" is invalid: spec.clusterIP: Invalid value: "10.0.10.10": provided IP is not in the valid range. The range of valid IPs is 10.96.0.0/12
+
+PS E:\git\study\K8S\예제> kubectl apply -f .\svc-cluster.yaml
+
+The Service "nginxsvc" is invalid: spec.clusterIP: Invalid value: "10.96.0.10": provided IP is already allocated
+
+```
+
+- 네트워크 테스트 이미지
+
+```
+kubectl run -it --image  nicolaka/netshoot testnet bash
+```
 
 ### NodePort
+
 서비스 하나에 모든 노드의 지정된 포트를 할당.
+- 30000 번 포트를 열면, node1 ,node2 ... 모든 노드의 30000 포트가 SvcIp:svcPort와 연결됨
+  - node1:30000 -> svc1Ip:svc1Port , node2:30000 -> svc1Ip:svc1Port
+- ClusterIP가 적용되고 해당서비스에 NodePort 연결 -> 즉 ClusterIP+NodePort
+  - cluster ip항목
+    - .spec.clusterIP
+    - .spec.ports.port
+    - .spec.ports.targerPort
+  - nodeport 항목
+    - .spec.type
+    - .spec.ports.nodePort
+- SNAT,DNAT 적용
+
+
+
+### 예제
+- deploy는 위와 동일  svc 만 변경
+
+```
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginxsvc
+spec:
+  type : NodePort # 기본값 ClusterIP
+  clusterIP: 10.96.0.20 # 없으면 자동할당
+  selector:  # 파드 셀렉터
+    app: nginx
+  ports:
+    - name: nginx
+      protocol: TCP
+      port: 10080
+      targetPort: 80 # container port
+      nodePort: 30080
+    - name: echo
+      protocol: TCP
+      port: 18080
+      targetPort: 8080 # container port
+      nodePort: 38080
+
+```
+
+### 참고
+
+- [흐름](https://youtu.be/NFApeJRXos4)
+- [흐름2](https://docs.microsoft.com/ko-kr/azure/aks/concepts-network)
+
+#### microsoft azure에서 설명 이미지가 이해하기 너무좋음 
+
+애플리케이션 워크로드에 대한 네트워크 구성을 간소화하기 위해 Kubernetes는 Service를 사용하여 일단의 Pod를 논리적으로 그룹화하고 네트워크 연결을 제공합니다. 사용할 수 있는 Service 유형은 다음과 같습니다.
+
+- 클러스터 IP - AKS 클러스터 내에서 사용할 내부 IP 주소를 만듭니다. 클러스터 내의 다른 워크로드를 지원하는 내부 전용 애플리케이션에 적합합니다.
+AKS 클러스터의 클러스터 IP 트래픽 흐름을 보여 주는 다이어그램
+
+![](img/aks-clusterip.png)
+
+- NodePort - 노드 IP 주소와 포트를 사용하여 애플리케이션에 직접 액세스할 수 있도록 포트 매핑을 기본 노드에 만듭니다.
+AKS 클러스터의 NodePort 트래픽 흐름을 보여 주는 다이어그램
+
+![](img/aks-nodeport.png)
+
+- LoadBalancer - Azure 부하 분산 장치 리소스를 만들고, 외부 IP 주소를 구성하고, 요청된 Pod를 부하 분산 장치 백 엔드 풀에 연결합니다. 고객의 트래픽이 응용 프로그램에 도달 하도록 허용 하기 위해 원하는 포트에서 부하 분산 규칙이 생성 됩니다.
+AKS 클러스터의 Load Balancer 트래픽 흐름을 보여 주는 다이어그램
+
+![](img/aks-loadbalancer.png)
+
+인바운드 트래픽을 추가로 제어하고 라우팅하려면 수신 컨트롤러를 대신 사용할 수 있습니다.
+
+- ExternalName - 애플리케이션에 쉽게 액세스하기 위한 특정 DNS 항목을 만듭니다.
+부하 분산 장치 및 서비스에 대한 IP 주소는 동적으로 할당하거나 사용할 기존 고정 IP 주소를 지정할 수 있습니다. 내부 및 외부 고정 IP 주소를 모두 할당할 수 있습니다. 이 기존 고정 IP 주소는 종종 DNS 항목에 연결됩니다.
+내부 및 외부 부하 분산 장치를 모두 만들 수 있습니다. 내부 부하 분산 장치는 개인 IP 주소만 할당 하므로 인터넷에서 액세스할 수 없습니다.
+
+
 
 ### LoadBalancer
 
+외부 로드밸런서를 사용,  나중 학습
+
+### ExternalName
+
+DNS와 같음 
+외부 주소나, 내부 서비스 주소를 참조하여 사용
+
+- 예제
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: prod
+spec:
+  type: ExternalName
+  externalName: google.com
+```
+
+- my-service.prod.svc.cluster.local 호스트를 검색하면, 클러스터 DNS 서비스는 google.com 값의 CNAME 레코드를 반환한다. my-service에 접근하는 것은 다른 서비스와 같은 방식으로 작동하지만, 리다이렉션은 프록시 또는 포워딩을 통하지 않고 DNS 수준에서 발생한다는 중요한 차이점이 있다. 나중에 데이터베이스를 클러스터로 이동하기로 결정한 경우, 해당 파드를 시작하고 적절한 셀렉터 또는 엔드포인트를 추가하고, 서비스의 유형(type)을 변경할 수 있다.
+
+curl my-service.prod.svc.cluster.local 
+구글 폼
+
+## Network 구조
+
+[참고](https://sookocheff.com/post/kubernetes/understanding-kubernetes-networking-model/#kubernetes-networking-model)
+
+```
+
+1. NAT란
+모든 IP 패킷에는 Source IP와 Destination IP가 있다.
+
+NAT란, Network Address Translation, 즉 IP 패킷 헤더의 IP 주소를 변경하는 기능 혹은 절차를 뜻한다. 1:1 NAT 혹은 1:다 NAT가 있다.
+
+PREROUTING : DNAT을 이용하여 패킷이 생길 때 사용됨
+POSTROUTING : SNAT을 이용하여 패킷이 나갈 때 사용됨
+2. SNAT
+내부 -> 외부
+패킷의 Source 주소를 변경하는 것으로  Source NAT, SNAT, 혹은 IP 마스커레이드라고 한다.
+인터넷으로 나가는 패킷의 Source IP를 G/W의 Public IP로 바꾼다.
+3. DNAT
+외부 -> 내부
+Destination IP 주소를 변경하여 내부에 접근할 수 있도록 패킷을 변경한다.
+대표적인 것은 Load Balancer이다. 
+
+엔드포인트란 ?
+```
+
+### HeadLess Service 
+
+- .spec.clusterIP : none  으로 할 경우 headless 를 만들 수 있음 
+- headless에서 pod selector를 지정할 경우 DNS A 레코드(pod ip)가 자동으로 만들어지는데 이를 가지고 서비스 사용
+
+#### 참고
+
+```
+A Record : IP
+CNAME : 도메인
+
+도메인 정보확인
+$ dig 도메인
+```
+
+### KubeProxy
+
+- 쿠버네티스 적절한 파드로 연결시켜주는 부분
+- 클러스터의 각 노드마다 실행되면서 클러스터 내부 IP로 연결하려는 요청을 적절한 파드로 전달
+- 3가지 모드 userspace, iptables, IPVS
+
+#### userspace 모드
+
+- 클라이언트 요청 -> iptables 거쳐서-> kube-proxy 요청받음 -> 적절한 파드로 라운드 로빈 방식을 사용해 나눠줌
+
+#### iptables 모드
+
+- 서비스 올라가면 가상 IP주소가 할당 되고 kube-proxy가 감지 -> 프록시가 새로운 서비스를 감지하면 ptables 규칙을 변경(리다이렉션, NAT)
+  - kube proxy는 iptables의 규칙을 관리(NAT)
+  -가상 IP 주소로 들어온 클라이언트를 리다이렉션 하기위해 kube-porxy가 실행중일 필요없음 (iptables가 함)
+                        Kubeproxy(규칙관리)
+                                |
+- 클라이언트 가상 IP로 요청 -> iptables 규칙 거쳐서 -> 적절한 파드로 리다이렉션
+- userspace 모드는 파드 하나로부터 연결 요청이 실패하면 자동으로 다른 파드에 연결을 재시도합니다. -> Iptables 모드는 파드 하나로의 연결 요청이 실패하면 재시도 하지않고 그냥 요청실패
+
+#### IPVS 모드
+
+- 대규모 클러스터(예10000개 서비스)에서 Iptables 작업은 크게 느려짐
+- IPVS는 로드밸런싱을 위해 설계됨(리눅스 커널에있는 L4 로드 밸런싱 기술)
+- IPVS는로드 밸런싱을 위해 설계되었고, 커널 공간에서 동작(빠름), 데이터 구조를 해시 테이블로 저장  => iptables 보다 빠름
+- 주요 알고리즘
+  - rr(round-robin) : 프로세스 사이에 우선순위를 두지 않고 순서와 시간 단위로 CPU를 할당
+  - lc(least connection) : 접속 개수가 가장 적은 서버를 선택
+  - dh(destination hashing) : 목적지 IP 주소로 해시값을 계산해 분산할 실제서버를 선택
+  - sh(source hashing) : 출발지 IP 주소로 해시값을 계산해 분산할 실제서버를 선택
+  - sed(shrtest expected delay) : 응답속도가 가장 빠른 서버를 선택
+  - nq(never queue) : sed와 비슷하지만 활성 접속 개수가 0인 서버를 먼저 선택
+- 기본관리모드가 2019년 12월에는 iptables고 이후 IPVS로 바뀐다는 말이있음 확인필요
+
+## Ingress - 나중 정리
+
+- 클러스터 외부에서 안으로 접근하는 요청들을 어떻게 처리할지 정의해둔 규칙 모음
+  - 접근 URL
+  - 트래픽 로드밸런싱
+  - SSL 인증서 처리
+  - 도메인 기반 가상호스팅
+
+
+## Lable & Annotation - 나중 정리 
+
+- 레이블은 특정 자원을 선택할때 주로 사용(Object 구분)
+- 어노테이션은 주석 성격의 메타데이터를 기록할때 사용
+
+### Lable
+
+### Annotation
+
+## ConfigMap - 나중 정리
+
+- 컨테이너에 필요한 환경 설정을 컨테이너와 분리하여 제공하는 기능
+- 상용서비스와 개발서비스의 환경변수 차이 같은것을 설정
+
+### ConfigMap 설정
+
+- 컨테이너에서 사용할 환경 변수를 정리하는거로 해당 컨테이너에 전체 컨피그맵의 환경변수를 올릴수도있고 일부분만 올리수도 있음
+
+- 일부 설정
+
+```
+```
+
+- 전체설정
+
+```
+```
+
+- Volume 으로 사용
+  - 컨테이너에 파일로 환경설정을 받을 수 있음 (예 data.DB_URL 파일에 내용은 localhost)
+```
+```
+
+## Secret - 나중정리
+
+- OAuth 토큰, .SSH 키 같은 민감한 정보들을 저장하는 용도로 사용
+
+
+## 파드 스케쥴링
+
+## 인증
+
 ## Volume
 
-### Persistence Volume
+- 종류 
+  - aws,azure,gce : 클라우드 불륨 서비스
+  - configmap ,service : 쿠버네티스 내부 오브젝트
+  - emptyDir, hostPath, local : 컨테이너 실행된 노드의 디스크를 불륨으로 사용
+  - nfs : 서버하나에 NFS 서버만들고 다른 컨테이너에서 NFS 서버 컨테이너를 가져다가 사용
 
-### Persistence Volume Clame
+### emptyDir
+  
+- 스코프 파드 , 컨테이너 종료되어도 파드가 살아있는한 데이터 보존
+- 파드 종료시 데이터 소멸
+- 예제
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache #컨테이너 연결된 경로
+      name: cache-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {} #빈값
+```
+
+### HostPath
+
+- 실행된 Host의 파일이나 디렉토리를 컨테이너 마운트
+- 파드가 재시작해도 데이터가 보존
+- /var/lib/docekr 같은 도커 시스템용 디렉토리를 마운트하여 모니터링 용도로 사용가능
+- 간단하며 HostPath.type 필드만 재대로 설정
+  - Default : HostPath 불륨 마운트 하기전 아무것도 확인안함
+  - DirectoryOrCreate : 설정한 경로에 디렉토리가없으면 퍼미션 755인 빈 디렉토리를 생성
+  - Directory : 해당 경로 디렉토리가 존재해야함, 없으면 파드는 생성이 안됨
+  - FileOrCreate : 해당파일없으면 644 빈 파일 생성
+  - File : 해당 경로 파일이 존재해야함, 없으면 파드는 생성이 안됨
+  - Socket : 설정한 경로에 유닉스 소켓 파일이 있어야함
+  - CharDevice : 설정한 경로에 문자 디바이스가 있는지 확인?
+  - BlockDevice : 설정한 경로에 블록 디바이스가 있는지 확인?
+- 예제
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data
+      # this field is optional
+      type: Directory
+```
+
+### NFS(Network File System)
+
+- 파드들 끼리 간단한 불륨 공유 할때 사용(고성능X)
+- 보통 사용하는 구조
+
+```
+
+파드1             파드2
+불륨(NFS)         불륨(NFS)
+    |               |
+    -----------------
+            |
+          파드(NFS 서버)
+          불륨(hostPath)
+
+
+```
+
+- [nfs 예제](https://github.com/kubernetes/examples/tree/master/staging/volumes/nfs)
+
+### Persistence Volume & Persistence Volume Clame
+
+- PV(Persistence Volume )
+  - 불륨 자체를 뜻함
+  - 클러스터 안에서 자원으로 다룸
+  - 파드하고 별개로 관리 , 별도 생명주기가 있음
+- PVC(Persistence Volume Clame)
+  - 사용자가 pv에 하는 요청
+  - 사용하고싶은 용량, 읽기/쓰기모드는 어떤모드인지 등 요청
+  - 파드는 PVC 로만 요청되기때문에 PV 가 어떤 스토리지를 사용하는지는 신경쓰지않음
+- 생명주기
+  - 프로비저닝
+    - PV 를 만드는 단계
+    - 프로비저닝은 PV를 미리 만든느 정적방법, 요청이 있을때마다 만든는 동적 방법이 있음
+    - 정적
+      - 클러스터 관리자가 적정 용량 PV 를 만들어두고 사용자 요청이 있을때 미리만든 PV 할당
+      - 미리만든 PV 가100G인데 150G요청하면 실패
+    - 동적
+      - 사용자가 PVC를 거쳐 PV를 요청할때 생성
+      - 클러스터 사용 용량이 1TB가 있다면 사용자가 원할때 원하는 용량을 생성해서 사용
+      - PVC는 동적 프로비저닝 할때 여러가지 스토리지 중 원하는 스토리지를 정의하는 `스토리지 클래스`로 PV생성
+  - 바인딩
+    - 프로비저닝으로 만든 PV를 PVC와 연결하는 단계
+    - 알맞는 PV가 없다면 요청은 실패
+    - 한번 실패했다고 요청을 끝내는것이 아니라 대기하다가 원하는 PV 가 생길때 PVC에 바인딩됨
+    - PV와 PVC 는 1:1 관계
+  - 사용
+    - PVC는 파드에 설정되고 파드는 PVC를 불륨으로 인식
+    - 할당된 PVC는 파드를 유지하는 동안 계속 사용하며 임의로 삭제 불가능 -> 사용 중인 스토리지 오브젝트 보호
+  - 반환
+    - 사용이 끝난 PVC는 삭제되고 PVC를 사용하던 PV를 초기화 하는 과정을 거침, 초기화 정책은 3가지
+      - Retain  : PV 를 그대로 보존
+        - DB같은거는 Retain으로함
+        - PV는 해제 상태 , 다른 PVC 에서 사용불가능
+        - 관리자가 직접 초기화
+          - PV가 외부 스토리지와 연결되어 있다면 PV는 삭제되더라도 외부 스토리지 불륨은 남아있음
+          - 스토리지에 남은 데이터를 직접 정리
+          - 남은 스토리지의 불륨을 삭제하거나 재사용하려면 해당 불륨을 이용하는 PV르 다시 만듦
+      - Delete : PV를 삭제하고, 외부 스토리지쪽의 불륨도 삭제, 동적 프로비저닝은 기본값이 Delete
+      - Recycle : PV의 데이터를 삭제하고 다시 새로운 PVC에서 PV를 사용할 수 있도록함
+        - 중단예정 정책 -> 이거말고 동적 프로비저닝 사용
+- 예제
+  - PV
+    - 템플릿
+
+      ```yaml
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+          name: pv0003
+          labels:
+            release: "stable"
+      spec:
+          capacity:
+            storage: 10Mi
+          volumeMode: Filesystem
+          persistentVolumeReclaimPolicy: Delete
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: slow
+          hostPath:
+            path: /home/test
+            type: DirectoryOrCreate
+      ```
+
+    - volumeMode : 1.9에서 추가된 필드
+    - accessModes : 불륨 플러그인마다 지원하는게 다름
+      - ReadWriteOnce : 노드 하나에만 볼륨을 읽기/쓰기하도록 마운트
+      - ReadOnlyMany : 여러개 노드에서 일기 전용으로 마운트 가능
+      - ReadWriteMany : 여러개 노드에서 읽기/쓰기 가능하도록 마운트
+    - persistentVolumeReclaimPolicy : 반환 정책, 삭제하고 생성하면 Retain이 들어감 (기본값이 Retain인듯)
+    - storageClassName
+      - PV-PVC 동일하게 지정된 storageClassName 끼리 연결됨 
+      - PV storageClassName를 정의 안하면 storageClassName정의 안된 PVC와 연결됨
+    - nfs/hostPath/... : 불륨 플러그인 명시
+  - PVC
+    - 템플릿
+
+    ```yaml
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: myclaim
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      volumeMode: Filesystem
+      resources:
+        requests:
+          storage: 10Mi
+      storageClassName: slow
+      selector:
+        matchLabels:
+          release: "stable"
+    ```
+
+    - resources.requests.storage : 용량 설정
+    - selector.matchLabels : 레이블로 PVC -PV 연결
+  - Pod PVC 사용
+    - 예제
+
+    ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+        name: mypod
+    spec:
+        containers:
+        - name: myfrontend
+          image: nginx
+          volumeMounts:
+          - mountPath: "/var/www/html"
+            name: mypd
+        volumes:
+        - name: mypd
+          persistentVolumeClaim:
+            claimName: myclaim
+    ```
+
+  
 
 ## 명령어
 ```
