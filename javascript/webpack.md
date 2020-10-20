@@ -52,10 +52,12 @@ $npm install webpack
         - use : 적용할 로더
 
 - plugins: 번들링 완료 후 마지막 output 시점에 개입
+  
     - array
-   
+
 
     - 플러그인 종류 체크 
+    - 
     ```javascript 
     module.exports = {
     plugins: [
@@ -81,6 +83,9 @@ $npm install webpack
     ]
 }
     ```
+    
+    ```
+
 - resolve: 모듈로딩 관련 옵션 설정, 모듈 해석방식 정의(alias등)
     - object
     - alias,modules 많이 사용
@@ -132,6 +137,7 @@ $npm install webpack
     "scripts": { "start": "webpack-dev-server"} 
     //실행
     $npm start
+    ```
 
 
     ```
@@ -139,7 +145,7 @@ $npm install webpack
     - minimize는 TerserPlugin이나 minimizer에 따로 정의된 플러그인 사용하여 minimize
     - splitChunks : 청크파일에서 중복되는 모듈을 모으는 역할
   - webpack-bundle-analyzer
-  
+
 ## watch 모드
 js 소스코드가 변경될 때마다 자동으로 bundle.js파일을 만들어줌
 

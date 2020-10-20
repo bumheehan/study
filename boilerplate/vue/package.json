@@ -1,12 +1,13 @@
 {
-  "name": "vueProject",
+  "name": "vueproject",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --mode development",
     "build": "webpack --mode production",
-    "start": "webpack-dev-server --mode development --open"
+    "start": "webpack-dev-server --mode development --open",
+    "lint": "eslint --ext .js,.vue src"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +15,13 @@
   "devDependencies": {
     "@babel/core": "^7.11.4",
     "@babel/preset-env": "^7.11.0",
+    "babel-eslint": "^10.1.0",
     "babel-loader": "^8.1.0",
     "css-loader": "^4.2.2",
+    "eslint": "^7.7.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-vue": "^6.2.2",
     "html-webpack-plugin": "^4.3.0",
     "vue-loader": "^15.9.3",
     "vue-style-loader": "^4.1.2",

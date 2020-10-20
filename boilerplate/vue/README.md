@@ -1,16 +1,16 @@
-
 ```
 npm init -y
 npm install --save-dev webpack webpack-cli webpack-manifest-plugin html-webpack-plugin
 npm install --save-dev @babel/core babel-loader @babel/preset-env
 npm install --save-dev webpack-dev-server
 npm install vue --save
-npm install vue-loader vue-template-compiler vue-style-loader -D
+npm install vue-loader vue-template-compiler vue-style-loader css-loader -D
+
+// eslint/prettier
+npm install eslint prettier eslint-config-prettier eslint-plugin-prettier eslint-plugin-vue babel-eslint --save-dev
 ```
 
-
 https://velog.io/@kyusung/Vue-app-sfc-without-vue-cli
-
 
 vue: JavaScript 프레임 워크
 vue-loader 및 vue-template-compiler: Vue 파일을 JavaScript로 변환하는 데 사용됩니다.
