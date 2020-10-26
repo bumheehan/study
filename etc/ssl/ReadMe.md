@@ -233,5 +233,82 @@ openssl x509 -req \
 openssl x509 -text -in openbase-rootca.crt
 ```
 
+## SSL 인증서 생성
+위 과정과 거의 비슷
+
+```
+# CA가 사용할 RSA key pair(public, private key) 생성
+# 개인키 분실에 대비해 AES 256bit 로 암호화한다. AES 이므로 암호(pass phrase)를 분실하면 개인키를 얻을수 없으니 꼭 기억해야 한다.
+openssl genrsa -aes256 -out hbh.key 2048
+
+# 개인키의 유출 방지를 위해 group 과 other의 permission 을 모두 제거한다.
+chmod 600 hbh.key
+
+# CSR(Certificate Signing Request) 생성을 위한 설정
+vi hbh_openssl.conf 
+#############################hbh_openssl.conf ##########################
+
+[ req ]
+default_bits            = 2048
+default_md              = sha1
+default_keyfile         = openbase.key
+distinguished_name      = req_distinguished_name
+extensions             = v3_user
+## 인증서 요청시에도 extension 이 들어가면 authorityKeyIdentifier 를 찾지 못해 에러가 나므로 막아둔다.
+## req_extensions = v3_user
+
+[ v3_user ]
+# Extensions to add to a certificate request
+basicConstraints = CA:FALSE
+authorityKeyIdentifier = keyid,issuer
+subjectKeyIdentifier = hash
+keyUsage               = nonRepudiation, digitalSignature, keyEncipherment
+## SSL 용 확장키 필드
+extendedKeyUsage = serverAuth,clientAuth
+subjectAltName          = @alt_names
+
+[ alt_names]
+## Subject AltName의 DNSName field에 SSL Host 의 도메인 이름을 적어준다.
+## 멀티 도메인일 경우 *.hbh.com 처럼 쓸 수 있다.
+DNS.1   = www.hbh.com
+DNS.2   = hbh.com
+DNS.3   = *.hbh.com
+
+[req_distinguished_name ]
+countryName                     = Country Name (2 letter code)
+countryName_default             = KR
+countryName_min                 = 2
+countryName_max                 = 2
+
+# 회사명 입력
+organizationName              = Organization Name (eg, company)
+organizationName_default      = Openbase
+
+# 부서 입력
+#organizationalUnitName          = Organizational Unit Name (eg, section)
+#organizationalUnitName_default  = Lab
+
+# SSL 서비스할 domain 명 입력
+commonName                      = Common Name (eg, your name or your server's hostname)
+commonName_default              = hbh
+commonName_max                  = 64
+############################################################################
+
+#CSR 생성
+openssl req -new -key hbh.key -out hbh.csr -config hbh_openssl.conf
+
+# passphrase 제거 -> 서버 부팅시 비밀번호 묻는것을 방지
+openssl rsa -in hbh.key -out hbh.key.nopasswd
+
+# 10년짜리 Root CA에 의한 인증서 발급
+
+openssl x509 -req -days 3650 -extensions v3_user -in hbh.csr \
+-CA rootca.crt -CAcreateserial \
+-CAkey  rootca.key \
+-out hbh.crt  -extfile hbh_openssl.conf
+
+#인증서 확인
+openssl x509 -text -in hbh.crt
+
 SSL 
 인증서 
