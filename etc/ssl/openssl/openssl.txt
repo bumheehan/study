@@ -1,0 +1,80 @@
+설명 잘되어 있음
+https://www.lesstif.com/system-admin/openssl-root-ca-ssl-6979614.html
+
+모든 인증서는 CA(발급기관)이 있어야하나 Root CA는 서명해줄 상위기관이 없으므로 Root Ca의 개인키로 스스로의 인증서에 서명하여 최상위 인증기관 인증서를 만든다, 이렇게 스스로 서명한 ROOT CA인증서를 Self Signed Certificate라고 부른다.
+
+# CA가 사용할 RSA key pair(public, private key) 생성
+# 개인키 분실에 대비해 AES 256bit 로 암호화한다. AES 이므로 암호(pass phrase)를 분실하면 개인키를 얻을수 없으니 꼭 기억해야 한다.
+openssl genrsa -aes256 -out openbase-rootca.key 2048
+
+# 개인키의 유출 방지를 위해 group 과 other의 permission 을 모두 제거한다.
+chmod 600 openbase-rootca.key
+
+---------------- openssl 부가 정보 -------------------------------------------
+# public key 생성
+openssl rsa -in openbase-rootca.key -pubout -out public.key
+# public key를 이용한 암호화
+openssl rsautl -encrypt -pubin -inkey [public.key] -in [file] -out [output]
+# private key를 이용한 복호화
+openssl rsautl -decrypt -inkey [private key] -in [encoded file] -out [output]
+------------------------------------------------------------------------------
+
+# CSR(Certificate Signing Request) 생성을 위한 설정
+vi rootca_openssl.conf 
+```
+[ req ]
+default_bits            = 2048
+default_md              = sha1
+default_keyfile         = openbase.key
+distinguished_name      = req_distinguished_name
+extensions             = v3_ca
+req_extensions = v3_ca
+
+[ v3_ca ]
+basicConstraints       = critical, CA:TRUE, pathlen:0
+subjectKeyIdentifier   = hash
+##authorityKeyIdentifier = keyid:always, issuer:always
+keyUsage               = keyCertSign, cRLSign
+nsCertType             = client, server
+[req_distinguished_name ]
+countryName                     = Country Name (2 letter code)
+countryName_default             = KR
+countryName_min                 = 2
+countryName_max                 = 2
+
+# 회사명 입력
+organizationName              = Organization Name (eg, company)
+organizationName_default      = Openbase
+
+# 부서 입력
+#organizationalUnitName          = Organizational Unit Name (eg, section)
+#organizationalUnitName_default  = Lab
+
+# SSL 서비스할 domain 명 입력
+commonName                      = Common Name (eg, your name or your server's hostname)
+commonName_default              = Openbase's Self Signed CA
+commonName_max                  = 64
+```
+
+#CSR 생성
+openssl req -new -key openbase-rootca.key -out openbase-rootca.csr -config rootca_openssl.conf
+
+# passphrase 제거 -> 서버 부팅시 비밀번호 묻는것을 방지
+openssl rsa -in openbase-rootca.key -out openbase-rootca.key.nopasswd
+
+# 10년짜리 Self-Signed Certificate 생성
+# 서명에 사용할 해시 알고리즘을 변경하려면 -sha256, -sha384, -sha512 처럼 해시를 지정하는 옵션을 전달해 준다. 기본값은 -sha256 이며 openssl 1.0.2 이상이 필요
+openssl x509 -req \
+-days 3650 \
+-extensions v3_ca \
+-set_serial 1 \
+-in openbase-rootca.csr \
+-signkey openbase-rootca.key.nopasswd \
+-out openbase-rootca.crt \
+-extfile rootca_openssl.conf
+
+#인증서 확인
+openssl x509 -text -in openbase-rootca.crt
+
+SSL 
+인증서 
