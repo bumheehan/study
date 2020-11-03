@@ -30,7 +30,7 @@ Docker-Desktop 설치 이후 셋팅에서 enable K8s 클릭
   sudo usermod -aG docker $USER && newgrp docker
   ##도커 사용자계정으로 재시작
   
-    ```
+  ```
 
 #### Kubectl 설치
 
@@ -44,6 +44,7 @@ Docker-Desktop 설치 이후 셋팅에서 enable K8s 클릭
     sudo mv ./kubectl /usr/local/bin/kubectl
 
     kubectl version --client
+    ```
 
 
     ```
@@ -390,12 +391,15 @@ Data:
     - kubectl rollout history deploy {디플로이명} --revision={리비전번호} 로 상세보기
   - kubectl rollout undo deploy {디플로이명} --to-revision={리비전번호}
 - 파드 개수 조정
+  
   - kubectl scale deploy {디플로이명} --replicas={변경할 레플리카}
 - 배포 정지, 재개, 재시작
   - rollout 명령어를 이용해 배포를 멈추거나 다시시작가능
   - 배포 정지
+    
     - kubectl rollout pause deploy/{디플로이 이름}
   - 배포 재개
+    
     - kubectl rollout resume deploy/{디플로이 이름}
   - 상태
     - kubectl rollout status deploy/{디플로이 이름}
@@ -413,57 +417,57 @@ Data:
       - 컨테이너 이미지 가져오기 에러
       - 권한 부족
       - 제한 범위 초과
-      - 앱 실행 조건 잘못 지정
+    - 앱 실행 조건 잘못 지정
   - 예제
-
+  
     ```
     # 현재 상태
     $> kubectl get pods
     NAME                      READY   STATUS    RESTARTS   AGE
     nginxd-5d7fd7c7dd-6blz4   1/1     Running   0          40s
     nginxd-5d7fd7c7dd-8t7hp   1/1     Running   0          42s
-    nginxd-5d7fd7c7dd-cw7kd   1/1     Running   0          40s
+  nginxd-5d7fd7c7dd-cw7kd   1/1     Running   0          40s
     nginxd-5d7fd7c7dd-w5hxq   1/1     Running   0          42s
-
+  
     # 배포 중지
-    $> kubectl rollout pause deploy/nginxd
+  $> kubectl rollout pause deploy/nginxd
     deployment.apps/nginxd paused
-
+  
     # 이미지 변경
-    $> kubectl set image deploy/nginxd nginxc=nginx:1.14.2 --record
+  $> kubectl set image deploy/nginxd nginxc=nginx:1.14.2 --record
     deployment.apps/nginxd image updated
-
+  
     # pause시 배포 안함
     $> kubectl get pods
     NAME                      READY   STATUS    RESTARTS   AGE
     nginxd-5d7fd7c7dd-6blz4   1/1     Running   0          58s
     nginxd-5d7fd7c7dd-8t7hp   1/1     Running   0          60s
-    nginxd-5d7fd7c7dd-cw7kd   1/1     Running   0          58s
+  nginxd-5d7fd7c7dd-cw7kd   1/1     Running   0          58s
     nginxd-5d7fd7c7dd-w5hxq   1/1     Running   0          60s
-
+  
     #rollout history보면 명령어 추가됨
     $> kubectl rollout history deploy/nginxd
     deployment.apps/nginxd
     REVISION  CHANGE-CAUSE
-    7         kubectl.exe set image deploy/nginxd nginxc=nginx:1.16.1 --record=true
+  7         kubectl.exe set image deploy/nginxd nginxc=nginx:1.16.1 --record=true
     8         kubectl.exe set image deploy/nginxd nginxc=nginx:1.14.2 --record=true
-
+  
     # pause 중이라 멈춰있음 
-    $> kubectl rollout status deploy/nginxd
+  $> kubectl rollout status deploy/nginxd
     Waiting for deployment "nginxd" rollout to finish: 0 out of 4 new replicas have been updated...
-
+  
     # 배포 재개
-    $> kubectl rollout resume deploy/nginxd
+  $> kubectl rollout resume deploy/nginxd
     deployment.apps/nginxd resumed
-
+  
     # 배포 진행 상태
     $> kubectl rollout status deploy/nginxd
     Waiting for deployment "nginxd" rollout to finish: 1 old replicas are pending termination...
     Waiting for deployment "nginxd" rollout to finish: 1 old replicas are pending termination...
     Waiting for deployment "nginxd" rollout to finish: 1 old replicas are pending termination...
-    Waiting for deployment "nginxd" rollout to finish: 3 of 4 updated replicas are available...
+  Waiting for deployment "nginxd" rollout to finish: 3 of 4 updated replicas are available...
     deployment "nginxd" successfully rolled out
-
+  
     # 배포 완료
     $> kubectl get pods
     NAME                      READY   STATUS        RESTARTS   AGE
@@ -955,16 +959,19 @@ $ dig 도메인
 - 일부 설정
 
 ```
+
 ```
 
 - 전체설정
 
 ```
+
 ```
 
 - Volume 으로 사용
   - 컨테이너에 파일로 환경설정을 받을 수 있음 (예 data.DB_URL 파일에 내용은 localhost)
 ```
+
 ```
 
 ## Secret - 나중정리
@@ -985,7 +992,7 @@ $ dig 도메인
   - nfs : 서버하나에 NFS 서버만들고 다른 컨테이너에서 NFS 서버 컨테이너를 가져다가 사용
 
 ### emptyDir
-  
+
 - 스코프 파드 , 컨테이너 종료되어도 파드가 살아있는한 데이터 보존
 - 파드 종료시 데이터 소멸
 - 예제
@@ -1183,7 +1190,27 @@ spec:
             claimName: myclaim
     ```
 
-  
+
+### Storage Class 
+
+- [설명 잘됨](https://timewizhan.tistory.com/entry/Kubernetes-Storage-StorageClass)
+
+Provisioner : Volume 만들어주는 곳 (AWS,GCE ... , Local)  Provider 라고도함
+
+동적 프로비저닝 사용할때 사용
+
+local로 사용할때는 아래와 같이 사용
+
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+```
+
+
 
 ## 명령어
 ```

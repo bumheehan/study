@@ -310,5 +310,10 @@ openssl x509 -req -days 3650 -extensions v3_user -in hbh.csr \
 #인증서 확인
 openssl x509 -text -in hbh.crt
 
-SSL 
-인증서 
+
+
+
+
+### 단순 nginx ingress tls 생성
+
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=Targos"
