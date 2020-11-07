@@ -212,7 +212,7 @@ String 은 불변객체로 "" 로 만들어진 String은 같은 가상머신 안
   - null 참조하는 방법은 예외적인것 , 변수를 유효범위(scope) 밖으로 밀어내는 것이 일반적
   - 이점 잘못 참조할때 nullpointerException 발생
 - 다 쓴 캐시는 이따금 청소 필요
-  - 상황에 따라 WeakHashMap 사용
+  - 상황에 따라 `WeakHashMap `사용
     - Map value가 null이 되면 삭제
 
 
@@ -249,4 +249,132 @@ String 은 불변객체로 "" 로 만들어진 String은 같은 가상머신 안
     - 파일스트림 같은 경우 close하지 않을때 다른 쓰레드가 lock 걸릴 수 있음
 
       
+
+
+
+## 3 장 모든 객체의 공통 메서드
+
+
+
+### 10. equals는 일반 규약을 지켜 재정의하라
+
+equals는 잘못 재정의 하면 끔직한 결과를 초래함, 가장 쉬운길은 아예 재정의 하지않는것
+
+아래 상황 중 하나에 해당되면 재정의 않는게 최선
+
+- 각 인스턴스가 본질적으로 고유하다
+  - 값을 표현하는게아니라 동작하는 객체를 표현하는 클래스
+  - 예) Thread
+- 인스턴스틔 논리적 동치성(Locgical Equality)을 검사할 일이 없다.
+- 상위 클래스에서 재정의한 equals가 하위 클래스에도 딱 들어 맞는다.
+  - Set 구현체는 AbstractSet이 구현한 equals를 상속받아 사용
+  - List는 AbstactList Map은 AbstractMap
+
+#### 규약 : null이 아닌 객체
+
+- 반사성(reflexivity)  : x.equals(x) 는 true
+- 대칭성(symmetry) : x.equals(y) 가 true 면 y.equals(x) 도 true
+- 추이상(transitivity) : x.equals(y) 가 true고 y.equals(z) true면 x.equals(z)도 true
+- 일관성(consistency) : x.equals(y)를 반복해서 호출하면 항상 true, false 
+- null-아님 : null이 아닌 참조값 x에 대해, x.equals(null)은 false 다
+
+#### 양질의 equals 메서드 구현방법
+
+1. == 연산자를 사용해 입력이 자기 자신의 참조인지 확인한다.
+2. instanceof 연산자로 입력이 올바른 타입인지 확인
+3. 입력을 올바른 타입으로 형변환
+4. 핵심필드 일치하는지 검사
+   - double, float은 Float.compare로 비교
+   - 배열의 모든 요소가 핵심 일때 Arrays.equals
+
+
+
+```
+@Override public boolean equals(Object o){
+	if(o==this)
+		return true;
+    if(!(o instanceof Type))
+    	return false;
+    Type t = (Type) o;
+    return t.member1 == member1 && t.member2 == member2;
+}
+```
+
+
+
+#### 핵심정리
+
+- 꼭 필요한 경우가아니면 equals 재정의 X
+- 재정의해야 할 때는 그 클래스의 핵심 필드 모두 빠짐없이 다섯가지 규약을 지키며 비교
+
+
+
+### 11. equals를 재정의하려거든 hashCode도 재정의하라
+
+
+
+Object 명세 
+
+- equals에 사용되는 정보(멤버? )가 변경되지 않았다면 hashCode도 일관성있게 같은값을 반환
+  - app다시실행시 달라질 수 있음
+- equals(Object)가 같다고 판단하면 두 객체 hashCode도 같아야함 --> 중요
+- equals(Object)가 다르다고 판단했어도 hashCode가 다른값일 필요는없다. 
+  - 성능상 다른게 좋음
+
+
+
+#### 해시코드 만드는법
+
+1. int result = fieldHashCode  선언
+2. 각 필드마다 해시 값 계산법
+   - 기본타입 Type.hashcode(f)
+   - 참조타입 hashCode
+     - 필드값이 null 이면 0
+     - 같은클래스를 사용할경우 재귀할 수 있으니 조심
+   - 배열 , 각원소를 필드 처럼다루는데 핵심원소가 아니면 제외
+     - 핵심원소가 하나도없다면 0
+3. result = 31 * result +fieldHashCode ; 공식으로 필드 이터레이터 , 
+4. result 반환
+
+
+
+#### 핵심
+
+IDE에서 자동으로 만들어줌
+
+필요할때 사용
+
+
+
+### 13 toString을 항상 재정의하라
+
+- toString 규약 : 모든 하위 클래스에서 이 메서드를 재정의하라
+
+- ###### 해당 객체의 정보를 담고 있는게 좋다, 정보가 많으면 요약해서 구현
+
+#### 핵심정리
+
+- 모든 구현 클래스에서는 toString을 정의
+- 상위 클래스에서 알맞게 제정의한건 예외
+- 재정의한 클래스는 디버깅 쉽게해줌
+- toString은 객체의 명확한 정보를 읽기 좋은 형태로 반환!
+
+
+
+### 14 clone 재정의는 주의해서 진행
+
+- Cloneable 인터페이스를 구현해야 clone시 ColoneNotSupportedException이 발생 안함
+  - clone override 시 super.clone 사용하는데 super.clone 사용안할 시 Cloneable 구현안해도됨
+- 얕은 복사 vs 깊은 복사
+  - 참조형 배열은 얕은 복사
+  - 2차원 이상 배열도 얕은복사(참조기때문에)
+    - 2차원 배열에서 내부객체 생성할때 기본생성자가 없을시 어떻게 복사함 ? => 일반화가 안됨 => 이런 문제들 때문에 참조형 Collection나 Array 복사할때는 Collection, Array만 복사되고 내부까지 복사하려면 직접 구현해야하` copied.setData(original.getData());`
+      - 뇌피셜
+  - 기본형 배열은 상관없음
+
+#### 핵심정리
+
+- Array복사 빼고는 clone쓰지말자, 직접 내부객체 복사기능 구현하는게 더 안전한것으로 판단됨
+
+### 15 Comparable 구현할지 고려하라
 
