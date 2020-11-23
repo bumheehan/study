@@ -378,3 +378,549 @@ IDE에서 자동으로 만들어줌
 
 ### 15 Comparable 구현할지 고려하라
 
+Comparable 규약
+
+- 이 객체가 주어진 객체보다 작으면 음의 정수(-1), 같으면 0 , 크면 양의 정수(1)를 반환
+- 이 객체와 비교할 수 없는 타입은 ClassCastException 발생
+- sgn(x.compareTo(y)) == -sgn(y.compareTo(x))
+
+- 동치성 중요 !, (x.compareTo(y)==0) == (x.equals(y)) ,  다를경우 "이 클래스의 순서는 equals 메서드와 일관되지 않다" 표시
+
+  - HashSet은 equals으로 동치성확인, TreeSet은 compareTo로 확인, 몇가지 컬렉션은 compareTo로 확인함 => 두 가지 다 작동하기위해 equals나 compareTo 가 같게 하는게 중요하다
+  - 동치성 다른 클래스 BigDecimal 
+    - new BigDecimal("1.00").equals(new BigDecimal("1.0")) == false 임 
+    - TreeSet에 두 객체 넣을 경우 한개의 객체만 들어감, TreeSet은 CompareTo로 비교하기  때문에
+    - HashSet은 두개의 원소가 모두 들어감
+
+- compareTo 를 구현할때 기본타입 래퍼클래스의  정적 compare 사용, 
+
+- 구현할때는 중요한 필드부터 순서를 맞춘다
+
+  - ```java
+    public int compareTo(A a){
+    	int result = Short.compare(this.i,a.i); // 가장 중요한 필드
+    	if(result==0){
+    		result = Short.compare(this.j,a.j); // 두번째 중요한 필드
+    		if(result==0){
+    			result= Short.compare(this.k,a.k); // 세번째 중요한 필드
+    		}
+    	}
+    	return result;
+    }
+    ```
+
+- Comparator : ? 
+
+#### 핵심 정리
+
+- 순서가 필요한 클래스는 Comparable 구현!
+
+
+
+
+
+## 4장 클래스와 인터페이스
+
+### 15 클래스와 멤버의 접근 권한을 최소화하라
+
+- private 잘 쓰자
+
+- public static final 배열은 불변 리스트로 구현
+
+  - ```
+    //배열 변경가능그래서 private으로 구현
+    private static final Thing[] PRIVATE_VALUES={...}
+    //불변리스트로 구현
+    public static final List<Thing> VALUES= Collections.unmodifiableList(Arrays.asList())
+    ```
+
+  - 
+
+
+
+### 16 Public 클래스에서는 Public 필드가 아닌 접근자 메서드를 사용하라
+
+- public 클래스는 절대 가변 필드를 노출 해서는 안됨! , 불변 필드는 덜 위험하지만 좋지는 않음
+
+### 17 변경 가능성을 최소화 하라
+
+#### 불변 클래스 
+
+인스턴스 내부 값을 수정 할 수 없는 클래스, BigInteger, BigDecimal, String 등 있음
+
+##### 생성방법
+
+- Setter(변경자 메서드) 제공 하지 않는다.
+- 클래스 확장할 수 없도록 한다
+  - 예로 final 사용
+- 모든 필드를 final로 선언
+- 모든 필드 private 선언
+  - public final 도 불변 객체지만 이 필드를 사용하는 시스템에서 다음 릴리즈 할때 변경이 불가능하여 권하지 않음
+- 자신 외에는 내부의 가변 컴포넌트에 접근할 수 없도록 한다.
+  - 클래스 내에 가변 클래스 사용하면, 불변 클래스가 될 수 없다.
+  - 방어적 복사를 사용
+
+##### 불변 클래스 특징
+
+- 불변 객체는 근본적으로 쓰레드에 안전하여 따로 동기화 필요없음
+- 불변 객체는 자유롭게 공유할 수 있음은 물론, 불변 객체끼리는 내부 데이터를 공유 할 수 있다.
+  - BigInteger 는 부호와 크기를 따로 저장, negete 메서드는 크기가 같고 부호만 다른 BigInteger를 생성하지만 원본 인스턴스가 가리키는 원본 배열 그대로 가리킴
+- 불변객체는 실패 원자성을 제공
+  - 실패원자성이랑 트랜잭션처럼 에러날경우 원소가 이전과 같은지에 대한것
+- 단점으로 값이 다르면 반드시 독립된객체로 생성
+  - 큰 인스턴스 생성시 단점이 더 커짐, 가변은 내부 필드만 변경해줘도됨 
+  - String은 StringBuilder 같은 가변 동반 클래스가 있음
+
+
+
+#### 결론
+
+- 불변을 보장 하려면 자신을 상속 하지 못하게 해야함
+  - 간단한 방법 final 클래스
+  - 더 간단한 방법 추천 : 모든 생성자를 private으로 두고 public 정적 팩터리 메서드 사용
+    - valueOf 등
+- 불변으로 만들수 없는  클래스라도 변경할 수 있는 부분을 최소한으로 줄이자.
+- 다른 합단한 이유가 없다면 모든 필드는 private final
+
+
+
+### 18 상속보다는 컴포지션을 사용 !!!!
+
+##### 상속
+
+- Is a 관계에만 사용
+  - 자바 기본 라이브러리에 있는 Stack이나, Properties도 IS-A 관계를 위반한 클래스이다. Stack IS A Vector 관계가 성립하지 않는다. 하지만 문제를 바로잡기에는 너무 늦어버려서 바꿀 수 없게 되었다.
+- 만약 하위 클래스의 패키지가 상위 클래스와 다르고 상위 클래스가 확장을 고려해서 설계되지 않았다면, 상속을 다시 고려해보아야 한다.
+  - 상위 클래스 변경되면 하위 클래스 문제발생 가능성있음
+- 상속을 고려한 클래스는 문서화 필요
+  - 클래스 내부에서 스스로의 메서드를 어떻게 사용하는지 문서로 남겨야한다.(어떤 순서로 호출하는지, 각각의 호출 결과는 어떻게 되는지)
+
+##### 컴포지션
+
+- Has a 관계
+- 기존 클래스가 새로운 클래스의 구성요소  & 여러 객체를 붙여서 한 객체를 구성하는 것을 의미
+
+
+
+##### 상속에서 코드 순서  , 햇갈릴까봐 적어놓음
+
+- subclass.addAll -> superclass.addAll -> subclass.add -> superclass.add
+
+- superclass.addAll 실행시 add를 실행하는데 이는 subclass의 add를 실행
+
+```java
+
+public class InheritTest {
+
+
+  public void add() {
+    System.out.println("add");
+  }
+
+  public void addAll() {
+    System.out.println("addall");
+    add();
+  }
+
+  public static void main(String[] args) {
+    SubClass subClass = new SubClass();
+    subClass.addAll();
+      /*
+      	결과
+      	addall
+        add
+        Sub add
+        Sub addAll
+      */
+  }
+}
+
+
+class SubClass extends InheritTest {
+
+  @Override
+  public void add() {
+    super.add();
+    System.out.println("Sub add");
+  }
+
+  @Override
+  public void addAll() {
+    super.addAll();
+    System.out.println("Sub addAll");
+  }
+}
+
+```
+
+
+
+위 코드와 같이 상속으로 코드를 구성하게되면 super 클래스에서 sub 클래스의 override된 메소드를 사용할 수 있어서 재대로 사용하지 않을 경우 위험함
+
+- 내가 상위 하위 클래스를 모두 개발한 개발자라면 문제가 없지만 다른 패키지를 상속할 경우 해당 패키지에서 클래스 수정을 하면 내 시스템에 문제가 발생할 수 있다. 따라서 다른 패키지는 되도록 상속 하지 말고 사용하고 싶을 경우 컴포지션을 사용하자.
+
+
+
+컴포지션 내용에 두 가지 항목이 있음
+
+- 전달클래스 + 컴포지션 = 넓은 의미로 위임(delegation)
+- 래퍼클래스 다른 클래스 인스턴스를 감싸고(wrap)있는 클래스
+
+
+
+##### 전달 클래스 + 래퍼클래스
+
+- 특정 구현된 Set을 받아 구성요소로 두고 해당 기능을 똑같이 사용
+- 전달클래스를 상속 받아 사용할 경우 , 상속으로 인한 취약성을 보완 할 수 있다.
+
+```java
+public class ForwardingSet<E> implements Set<E> {
+	private final Set<E> s;
+
+	public ForwardingSet(Set<E> s) {
+		this.s = s;
+	}
+	public void clear() {
+		s.clear();
+	}
+	public boolean contains(Object o) {
+		return s.contains(o);
+	}
+	public boolean isEmpty() {
+		return s.isEmpty();
+	}
+	public int size() {
+		return s.size();
+	}
+	public Iterator<E> iterator() {
+		return s.iterator();
+	}
+	public boolean add(E e) {
+		return s.add(e);
+	}
+	public boolean remove(Object o) {
+		return s.remove(o);
+	}
+	...
+}
+public class InstrumentedSet<E> extends ForwardingSet<E> {
+	private int addCount = 0;
+
+	public InstrumentedSet(Set<E> s) {
+		super(s);
+	}
+
+	@Override
+	public boolean add(E e) {
+		addCount++;
+		return super.add(e);
+	}
+
+	@Override
+	public boolean addAll(Collection<? extends E> c) {
+		addCount += c.size();
+		return super.addAll(c);
+	}
+
+	public int getAddCount() {
+		return addCount;
+	}
+
+}
+```
+
+
+
+##### 상속 코드 
+
+- HashSet의 addAll은 add를 사용하기때문에 두 번씩 더해짐
+
+```java
+public class InstrumentedHashSet<E> extends HashSet<E> {
+	private int addCount = 0;
+	public InstrumentedHashSet() {
+	}
+
+	public InstrumentedHashSet(int initCap, float loadFactor) {
+		super(initCap, loadFactor);
+	}
+
+	@Override
+	public boolean add(E e) {
+		addCount++;
+		return super.add(e);
+	}
+
+	@Override
+	public boolean addAll(Collection<? extends E> c) {
+		addCount += c.size();
+		return super.addAll(c); //super.addAll에서 add를 사용!
+	}
+
+	public int getAddCount() {
+		return addCount;
+	}
+}
+```
+
+
+
+##### 단순 래퍼클래스 
+
+- httpServletRequest 클래스 등 자주 래퍼스 만든는 클래스들이 있음
+- 래퍼클래스 메모리 문제 거의 없다고함 
+
+```java
+public class InstrumentedSet<E> {
+	private int addCount = 0;
+	private final Set<E> s;
+	
+	public InstrumentedSet(Set<E> s) {
+		this.s=s;
+	}
+
+	public boolean add(E e) {
+		addCount++;
+		return s.add(e);
+	}
+
+	public boolean addAll(Collection<? extends E> c) {
+		addCount += c.size();
+		return s.addAll(c);
+	}
+
+	public int getAddCount() {
+		return addCount;
+	}
+
+}
+```
+
+
+
+#### 결론 : 상속의 취약점을 피하려면 컴포지션과 전달을 사용하자.
+
+
+
+### 19 상속을 고려해 설계하고 문서화하라. 그러지 않았다면 상속을 금지하라
+
+상속용 클래스는 재정의할 수 있는 메서드들을 내부적으로 어떻게 이용하는지 문서로 남겨야한다.
+
+`재정의할 수 있는 메서드` : public , protected 중 final이 아닌 모든 메서드
+
+API 문서 끝 `Implementation Requirements` 로 시작 하는 절 : 메서드 내부 동작방식을 설명하는 곳
+
+- @implSpec 태그를 붙여주면 자바독 도구가 생성해줌
+
+- ```
+  AbstractCollection 자바 문서
+  
+  isEmpty
+  public boolean isEmpty()
+  Returns true if this collection contains no elements.
+  Specified by:
+  	isEmpty in interface Collection<E>
+  Implementation Requirements:
+  	This implementation returns size() == 0.
+  Returns:
+  	true if this collection contains no elements
+  
+  ```
+
+상속용 클래스는 반드시 하위 클래스를 만들어 검증 필요!!
+
+상속용 클래스의 생성자는 직 , 간접적으로 재정의 기능 메소드를 호출 해서는 안된다.
+
+- 하위 클래스 생성자보다 먼저 실행되므로 잘못된 작동을 할 확률이 높다.
+
+
+
+#### 결론
+
+- 상속시 문서화 
+- 상속할 클래스만 상속으로사용, 상속용으로만들지 않은 클래스는 상속하지 말것!
+
+### 20  추상 클래스 보다는 인터페이스를 우선하라
+
+다중 인터페이스 extends 로 받아 새로운 인터페이스 생성 가능
+
+```
+public interface Singer{
+	void sing(Song s);
+}
+
+public interface Songwriter{
+	Song compose(int chartPosition);
+}
+
+public interface SingerSongwriter extends Singer,Songwriter{
+	void strum();
+}
+```
+
+
+
+추상 골격 구현(skeletal implementation) 
+
+- 디폴트 메서드 구현
+- 중요 메서드는 구현 안됨 (abstract)
+- 관례상 이름 AbstractInterface
+  - AbstractMap, AbstractList, AbstractSet ...
+
+
+
+##### default메소드
+
+- 인터페이스가 default키워드로 선언되면 메소드가 구현될 수 있다. 또한 이를 구현하는 클래스는 default메소드를 오버라이딩 할 수 있다.
+
+```
+    public interface Calculator {
+        public int plus(int i, int j);
+        public int multiple(int i, int j);
+        default int exec(int i, int j){      //default로 선언함으로 메소드를 구현할 수 있다.
+            return i + j;
+        }
+    }
+```
+
+### 결론
+
+- 일반적 다중 구현용 타입으로는 인터페이스가 가장 적합  ,
+  - 뭔말이지
+- 복잡한 인터페이스라면 구현하는 수고를 덜어주는 골격 구현을 함께 제공 하는 방법이 좋다.
+- 가능한 한 디폴트 메서드로 제공하여 그 인터페이스를 구현한 모든 곳에서 활용하도록 하는것이 좋다.
+- 구현상의 제약으로 어려우면 골격 구현 추상 클래스로 제공하자.
+
+
+
+### 21 인터페이스는 구현하는 쪽을 생각해 설계하라
+
+
+
+- 기존에는 인터페이스에 메서드를 추가하면 구현체가 에러발생했다.(구현을 안했기때문에) 자바 8부터 디폴트 메서드가 나와서 인터페이스에 디폴트메서드를 추가 하더라도 구현체에 컴파일에러가 발생하지 않는다.
+- 디폴트 메서드가 새롭게 인터페이스를 만드는데 유용하지만 기존 시스템에 추가하는 것은 꼭 필요한 경우가 아니라면 하지않는게 좋다.
+  -  기존 구현체와 충돌나지 않을지 심사숙고하자 
+  - 예로 나온것이 동기화 관련된 컬렉션인데 나중에 추가된 디폴트 메서드는 동기화 하지 않아 기존 구현의 의미를 깨뜨림
+- 인터페이스 잘쓰자 라는 주제
+
+
+
+### 22 인터페이스는 타입을 정의하는 용도로만 사용하라
+
+- 상수 인터페이스 사용금지
+  - Integer.MAX_VALUE 같이 특정 클래스나 인터페이스에 심히 연관된 상수는 괜찮음
+  - 상수는 내부구현에 해당됨
+  - 인터페이스에 넣으면 내부 구현을 API로 노출하는샘
+  - 필요하면 상수 클래스 생성
+
+
+
+### 23 태그 달린 클래스보다는 클래스 계층 구조를 활용하라
+
+- 태그달린 -> 주석달린 클래스 즉 한 클래스안에 여러가지 기능이 있는 클래스
+  - 예) 원과 사각형 기능을 가진 클래스로 radius 필드는 원, length ,height 필드는 사각형을 위한 필드 
+
+- 계층 구조로 Figure 추상 클래스를 상속한 Circle , Ractangle 서브 클래스  형태가 더 좋다.
+- 단일 책임 원칙
+
+
+
+### 24 멤버클래스는 되도록 static으로 만들라
+
+- 멤버클래스 => class 안 멤버로 class 있는것
+- 내부 동작에 의해 변경이되는 클래스가 아닐경우(바깥 인스턴스와 독립적으로 존재) static class로 내부클래스를 생성하자
+- static 을 안붙일 경우 내부 클래스는 바깥 인스턴스와 연결된다.
+  - 인스턴스 안에 연결되기 때문에 인스턴스가 쓸데없는 메모리를 가짐
+- static 없는 내부클래스를 잘못 참조할경우 메모리 누수가 생길수 있다.
+
+#### 결론
+
+- 중첩 클래스 4개 있음
+- 메서드 밖에서도 사용하고 메서드 안에 정의하기 힘들면 멤버 클래스로 선언
+  - 바깥 인스턴스와 독립적이면 static 아니면 non-static으로 선언
+
+### 25 톱레벨 클래스는 한 파일에 하나만 담으라
+
+#### 결론
+
+하나의 자바파일(.java)에는 하나의 클래스만 넣어야 한다.
+
+
+
+## 제네릭
+
+### 26 로(raw) 타입은 사용하지 마라
+
+
+
+Raw 타입 
+
+- List<E> 에서 List가 raw 타입이라고함, 제네릭빼고 사용하는 구조
+
+- List는 List<Object> 를 받을 수도 있고, List<String>도 받을 수 있다.
+
+  - List != List<Object>, List<Object>가 더 하위 
+  - 파라메터로 List에 List<String> 를 받아지지만 List<Object>에 List<String> 는 안된다. => List<Object>가 더 타입안정성이있다.
+
+- List를 사용하면 어떤 List가 오더라도 받아진다. => 형변환 에러 가능성이 높아짐
+
+- List<Object>는 모든 타입을 받겠다고 컴파일러에 명확히 전달
+
+- 어떤 타입인지 알 필요없는 값을 파라메터로 받을 경우, 로타입 보단 비 한정적 와일드 카드를 사용하자.
+
+  - 비한정적 와일드 카드(unbounded wildcard type) : ?
+
+    - Set<?> 과같이 사용
+    - 어떤 타입이라도 담을 수 있는 가장 범용적인 매개변수화 된 컬렉션
+    - 로타입은 아무 원소나 넣을 수 있지만 Collection<?> 는 null 이외에 어떤 원소도 넣을 수 없다.
+
+  - ```
+    public void test(List A, List B){}
+    public void test(List<?> A, List<?> B){}
+    ```
+
+- 로타입 사용처
+
+  - instanceof 로타입 , A istanceof Set (O)
+  - 로타입.class , List<?>.class (X)
+
+- 로타입은 제네릭 이전 코드의 호환성때문에 남아있음
+
+### 27 비검사 경고를 제거하라
+
+- 컴파일시 경고 제거
+  - -Xlint:uncheked
+- 경고를 제거할 수 없지만 타입이 안전하다고 확신하면 @SuppressWarnings("unckecked")사용
+  - 클래스 전체에도 사용할 수있지만 가능한한 좁은 범위 (메소드, 지역 변수)에서 사용하자
+
+
+
+### 28 배열보단 리스트 사용하라
+
+- 타입 안정성
+  - Sub[] 는 Super[]의 하위 타입이 된다. 
+
+  - List<Sub> 는 List<Super>의 하위 타입이 아니다.
+
+  - ```
+    // 런타입 에러
+    Object[] objectArray =new Long[1];
+    objectArray[0]="당연 에러";//ArrayStoreException 
+    
+    //컴파일 에러
+    List<Object> ol =new ArrayList<Long>(); // 호환되지 않음
+    ol.add("당연 에러");
+    ```
+
+- 배열은 런타임에도 자신이 담기로한 원소타입을 인지하고 확인한다. (위 코드에서 추가할때 ArrayStoreException 발생) 반면 제네릭은 타입정보가 런타임에는 소거 된다. 원소타입을 컴파일에서만 검사한다.
+
+- 배열 실체화 (reify)
+
+### 29 이왕이면 제네릭 타입으로 만들라
+
+- 클라이언트에서 직접 형변환하는 것보다 제네릭을 쓰는게 더 안전하다.
+
+### 30 이왕이면 제네릭 메소드로 만들라
+
+- 제네릭 메소드 쓰라는 이야기인데, 제네릭에 대해서 따로정리함
+
