@@ -27,9 +27,13 @@ public class TutorialSound {
 
     // playback("test.wav");
     // playbackSource("test.wav");
-    playbackSourceReverse("testReverse.wav");
+    // playbackSourceReverse("testReverse.wav");
     // capture("test.wav");
     // captureReverse("testReverse.wav");
+
+    // playbackLeft("lol.wav");
+    playbackSurround("lol.wav");
+
   }
 
   public static void displayMixerInfo() {
@@ -197,6 +201,143 @@ public class TutorialSound {
     }
   }
 
+  public static void playbackLeft(String filepath) {
+    try (AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(filepath));
+        SourceDataLine sourceDataLine =
+            AudioSystem.getSourceDataLine(audioInputStream.getFormat());) {
+      AudioFormat format = audioInputStream.getFormat();
+      sourceDataLine.open();
+      int buffersize = 1024;
+      byte[] buffer = new byte[buffersize];
+      long total = 0;
+      int numBytesRead = 0;
+      int timeout = 20;// second
+      long totalToRead = (long) (format.getFrameSize() * format.getSampleRate() * timeout);
+      sourceDataLine.start();
+
+      byte[] readAllBytes = audioInputStream.readAllBytes();
+      System.out.println(readAllBytes.length);
+
+      byte[][] divideChannel =
+          divideChannel(readAllBytes, format.getSampleSizeInBits(), format.getChannels());
+      ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(divideChannel[0]);
+
+      while (total < totalToRead) {
+        numBytesRead = byteArrayInputStream.read(buffer, 0, buffersize);
+        if (numBytesRead == -1)
+          break;
+        total += numBytesRead;
+        sourceDataLine.write(buffer, 0, numBytesRead);
+      }
+      sourceDataLine.drain();
+      sourceDataLine.stop();
+
+      // 10726272
+      System.out.println(total);
+
+    } catch (LineUnavailableException e) {
+      e.printStackTrace();
+    } catch (UnsupportedAudioFileException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void playbackSurround(String filepath) {
+    try (AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(filepath));
+        SourceDataLine sourceDataLine =
+            AudioSystem.getSourceDataLine(audioInputStream.getFormat());) {
+      AudioFormat format = audioInputStream.getFormat();
+      sourceDataLine.open();
+      int buffersize = 1024;
+      byte[] buffer = new byte[buffersize];
+      long total = 0;
+      int numBytesRead = 0;
+      int timeout = 30;// second
+      long totalToRead = (long) (format.getFrameSize() * format.getSampleRate() * timeout);
+      sourceDataLine.start();
+
+      byte[] readAllBytes = audioInputStream.readAllBytes();
+      System.out.println(readAllBytes.length);
+      int surroundTime = 5;// 5초
+      surroundStereoSound(readAllBytes, format.getSampleSizeInBits(), format.getSampleRate(),
+          surroundTime);
+      saveFile(readAllBytes, format, filepath + "_surround");
+      ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(readAllBytes);
+
+      while (total < totalToRead) {
+        numBytesRead = byteArrayInputStream.read(buffer, 0, buffersize);
+        if (numBytesRead == -1)
+          break;
+        total += numBytesRead;
+        sourceDataLine.write(buffer, 0, numBytesRead);
+      }
+      sourceDataLine.drain();
+      sourceDataLine.stop();
+
+      // 10726272
+      System.out.println(total);
+
+    } catch (LineUnavailableException e) {
+      e.printStackTrace();
+    } catch (UnsupportedAudioFileException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  // 1speed = 1Frame에 1회, 초당 44100
+  private static void surroundStereoSound(byte[] rawdata, int sampleBit, float sampleRate,
+      int surroundTime) {
+    int channel = 2;
+    int sameplesize = sampleBit / 8;
+    if (rawdata.length % (sameplesize * channel) != 0) {
+      throw new IllegalArgumentException("endian 크기 안맞음");
+    }
+
+    int sampleTotal = rawdata.length / sameplesize;
+    int iter = 0;
+    double cal = 0;
+    float surroundTimeVal = sampleRate * surroundTime; //
+    for (int i = 0; i < sampleTotal; i++) {
+      byte[] sample = new byte[sameplesize];
+      if (i == 50000) {
+        System.out.println();
+      }
+      System.arraycopy(rawdata, i * sameplesize, sample, 0, 2);
+      short soundInt = littleEndianByteToShort(sample);
+      // 왼쪽 샘플
+      if (i % 2 == 0) {
+        soundInt = (short) (soundInt * cal);
+      } else {
+        // 오른쪽 샘플
+        soundInt = (short) (soundInt * (1 - cal));
+        iter++;
+        cal = (Math.sin(Math.toRadians(360 * iter / surroundTimeVal)) + 1) / 2;
+
+      }
+      byte[] endian = shortTolittleEndianByte((short) soundInt);
+      System.arraycopy(endian, 0, rawdata, i * sameplesize, 2);
+
+    }
+
+  }
+
+  private static short littleEndianByteToShort(byte[] bytes) {
+    return (short) ((bytes[1] & 0xff) << 8 | (bytes[0] & 0xff));
+  }
+
+  private static byte[] shortTolittleEndianByte(short shortVar) {
+    byte littleShort[] = new byte[2];
+    littleShort[0] = (byte) ((shortVar >> 0) & 0xff);
+    littleShort[1] = (byte) ((shortVar >> 8) & 0xff);
+    return littleShort;
+  }
+
+
+
   private static void reverseLittleEndian(byte[] rawdata, int bytenum) {
 
     /*
@@ -221,6 +362,29 @@ public class TutorialSound {
     }
   }
 
+  private static byte[][] divideChannel(byte[] rawdata, int sameplebit, int channel) {
+    int sameplesize = sameplebit / 8;
+    if (rawdata.length % (sameplesize * channel) != 0) {
+      throw new IllegalArgumentException("endian 크기 안맞음");
+    }
+
+    byte[][] div = new byte[channel][];
+    for (int i = 0; i < channel; i++) {
+      div[i] = new byte[rawdata.length];
+      System.arraycopy(rawdata, 0, div[i], 0, rawdata.length);
+    }
+
+    for (int i = 0; i < rawdata.length; i++) {
+      for (int j = 0; j < channel; j++) {
+        if (j != ((i / sameplesize) % channel)) {
+          div[j][i] = 0;
+        }
+      }
+    }
+
+
+    return div;
+  }
 
   /*
    * 녹음
@@ -247,11 +411,7 @@ public class TutorialSound {
         bao.write(buffer, 0, read);
       }
       byte[] audioData = bao.toByteArray();
-      InputStream input = new ByteArrayInputStream(audioData);
-      AudioInputStream audioInputStream =
-          new AudioInputStream(input, audioFormat, audioData.length / audioFormat.getFrameSize());
-      AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, new File(path));
-
+      saveFile(audioData, audioFormat, path);
     } catch (LineUnavailableException ex) {
       ex.printStackTrace();
     } catch (IOException e) {
@@ -285,10 +445,7 @@ public class TutorialSound {
       }
       byte[] audioData = bao.toByteArray();
       reverseLittleEndian(audioData, audioFormat.getFrameSize());
-      InputStream input = new ByteArrayInputStream(audioData);
-      AudioInputStream audioInputStream =
-          new AudioInputStream(input, audioFormat, audioData.length / audioFormat.getFrameSize());
-      AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, new File(path));
+      saveFile(audioData, audioFormat, path);
 
     } catch (LineUnavailableException ex) {
       ex.printStackTrace();
@@ -297,4 +454,11 @@ public class TutorialSound {
     }
   }
 
+  private static void saveFile(byte[] audioData, AudioFormat audioFormat, String dest)
+      throws IOException {
+    InputStream input = new ByteArrayInputStream(audioData);
+    AudioInputStream audioInputStream =
+        new AudioInputStream(input, audioFormat, audioData.length / audioFormat.getFrameSize());
+    AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, new File(dest));
+  }
 }

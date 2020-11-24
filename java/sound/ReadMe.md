@@ -2,7 +2,71 @@
 
 
 
-## 용어정리 
+## 관련 정보 (용어 등)
+
+PCM(Pulse Code Modulation) : 아날로그 -> 디지털 변환 방식, 자주쓰는 용어인 Sample Rate, Bit Depth 등 이있음
+
+Nyquist Theorem : 샘플링 속도는 아날로그 신호의 최대 주파수(fmax)라고 할때 최소 d(샘플링 주파수)=2fmax(2배)여야 온전히 신호를 변환 할 수 있다. 
+
+![Sampling of A/D converter | Renesas Customer Hub](https://app.na4.teamsupport.com/Wiki/WikiDocs/784358/images/rel/samp_1.gif)
+
+d = sample period frequency
+
+[Sampling ](http://microscopy.berkeley.edu/courses/dib/sections/02Images/sampling.html)
+
+![img](http://microscopy.berkeley.edu/courses/dib/sections/02Images/images/sampling.gif)
+
+d>2f
+
+![img](http://microscopy.berkeley.edu/courses/dib/sections/02Images/images/sampling2.gif)
+
+d=4fmax
+
+![img](http://microscopy.berkeley.edu/courses/dib/sections/02Images/images/aliasing.gif)
+
+d<fmax
+
+
+
+가청주파수 20kHz 일때 나이쿼스트 샘플링 최소 주파수는 40kHz 이상이어야함 
+
+오디오 CD경우 44.1kHz , 과거 TV 주사선에 샘플데이터  저장했는데 그와 관련하여 나온 주파수 이다.
+
+- 44100 = 2^2 * 3^2 * 4^2 * 7^2 prime numer 제곱
+
+
+
+
+
+
+
+[샘플링 관련 내용](https://blog.naver.com/wyepark/221012896754)
+
+![](images/pcm.png)
+
+ADC (Analog Digital Converter) : 아날로그 -> 디지털 변환기
+
+DAC(Digital Analog Converter) : 디지털 -> 아날로그 변환기
+
+
+
+channel : 한개의 채널 모노, 2개의 채널 스테레오, 5.1채널 사운드 = 6채널
+
+frame : 모든 채널을 합쳐서 하나의 샘플로 구성하고 있는것
+
+- frame = sample size * channel 
+
+-  44100Hz샘플레이트로 만들어진 오디오에는 초당 44100개의 frame이 포함되어있음
+  - 모노인 경우 샘플 개수가 프레임 개수랑 동일
+  - 스테레오는 샘플 개수가 프레임 개수의 2배
+- 샘플 한개의 크기를 1byte 로하면 256단계, 2byte로하면 65536개의 소리를 재현할 수 있다.
+- 2byte 샘플크기 * 스테레오 = 4 byte frame size
+
+- 4분 노래, 스테레오, 2byte 샘플 , 샘플속도 48000 hz=> 240s * 2 (channel) * 2 (samplesize) * 48000 (Hz) / 8(bit/byte) =5.5Mbyte
+
+
+
+
 
 Mixer : 믹서란 한개 이상의 라인을 가진 한개의 오디오 장치
 
@@ -240,7 +304,8 @@ AudioInputStream 으로 mp3 열려고 하니까 javax.sound.sampled.UnsupportedA
 #### Wave
 
 
- 헤더
+
+##### 헤더
 
 **Little Endian 유의해서 읽을 것**
 
