@@ -307,6 +307,12 @@ AudioInputStream 으로 mp3 열려고 하니까 javax.sound.sampled.UnsupportedA
 
 ##### 헤더
 
+[참고 사이트 1](https://crystalcube.co.kr/123)
+
+[참고사이트2(여기가 더좋음 )](http://soundfile.sapp.org/doc/WaveFormat/)
+
+![img](http://soundfile.sapp.org/doc/WaveFormat/wave-bytes.gif)
+
 **Little Endian 유의해서 읽을 것**
 
 
