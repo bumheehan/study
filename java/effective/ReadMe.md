@@ -924,3 +924,235 @@ Raw 타입
 
 - 제네릭 메소드 쓰라는 이야기인데, 제네릭에 대해서 따로정리함
 
+### 31 한정적 와일드카드를 사용해 api 유연성을 높여라
+
+- <? extends SuperClass> : SuperClass의 특정 자식으로 생각하고 코딩
+- <?>  : 파라메터만 가능하고 추가 안됨 
+- <? super SubClass> : SubClass의 부모 클래스(?)로 생각하고 코딩
+  - <E extends Comparabe<? super E>> 
+    - Comparable<? super E> : E의 super 클래스에서 Comparable 이 생성되었을 수 도 있어서 이런 형태로 사용
+
+```
+    public void doSomething(List<? extends MyClass> list) {
+    	//MyClass의 자식은 MyClass로 형변가능
+        for (MyClass e : list) { // Ok
+            System.out.println(e);
+        }
+    }
+
+    public void doSomething(List<? extends MyClass> list) {
+    	//MyClass인스턴스를 MyClass 자식 컬렉션에 추가 못함
+        list.add(new MyClass()); // Compile Error
+    }
+
+    public void doSomething(List<? super MyClass> list) {
+    	//MyClass의 부모가 Object라고 할 경우, Object 컬렉션을 MyClass로 형변 불가능(강제 X)
+        for (MyClass e : list) { // Compile Error
+            System.out.println(e);
+        }
+    }
+
+    public void doSomething(List<? super MyClass> list) {
+    	//MyClass의 부모가 Object라고 할 경우, MyClass 인스턴스는 Object로 형변 가능
+        list.add(new MyClass()); // Ok
+    }
+```
+
+
+
+- 사용자가 와일드카드 타입을 신경써야 한다면 잘못된 API일 확률이 높다.
+
+- PECS : producer-extends , consumer-super 
+  - 생산자라면 < ? extends T> 소비자라면 <? super T> 사용
+  - 오라클은 In Out으로 설명, 
+    -  `copy(src, dest)`라는 메소드가 있다고 하자. 여기서 src는 데이터를 복사할 데이터를 제공하므로(생산) **In** 인자가 되고 dest는 다른 곳에서 사용할 데이터를 받아들이므로(소비) **Out** 인자가 되므로 In의 경우 **extends** 키워드를 사용하고 Out의 경우는 **super**를 사용하라고 한다.
+  - 논리가 이해가 잘 안감
+  - Comparable, Comparator는 모두 소비자라고함,.. 
+
+
+
+### 32 제네릭과 가변인수를 함께 쓸 때는 신중하라
+
+![자바의 와일드카드 서브타이핑](http://happinessoncode.com/images/java-generic-and-variance-1/Java_wildcard_subtyping.svg)
+
+- | **공변성(covariant)**          | T’가 T의 서브타입이면, C<T’>는 C<T>의 서브타입이다. |
+  | ------------------------------ | --------------------------------------------------- |
+  | **반공변성(contravariant)**    | T’가 T의 서브타입이면, C<T>는 C<T’>의 서브타입이다. |
+  | **무변성 \| 불변 (invariant)** | C<T>와 C<T’>는 아무 관계가 없다.                    |
+
+- 배열은 공변임  Super 클래스, Sub 클래스, 
+  - Super[] 는 Sub[] 의 슈퍼타입
+- 제네릭은 불변임
+  - List<Super> 와 List<Sub>는 서로 관계 X
+
+#### 핵심정리
+
+가변인수와 제네릭은 궁합이 좋지않음, 타입이 안전하다면 @SafeVarargs 사용
+
+```
+    static void dangerous(List<String>... stringLists) {
+        List<Integer> integers = Collections.singletonList(41);
+        //가변인수는 배열-> 공변 -> Object[]로 변경가능
+        Object[] objects = stringLists;
+        objects[0] = integers;              //힙 오염 발생
+        String s = stringLists[0].get(0);   //ClassCastException
+    }
+    
+    //Parent Class - Child Class (Parent 클래스를 상속)
+    //Parent[] parents - Child[] children (상속 관계 - 공변)
+    //List<Parent> parents - List<Child> children (상속 관계가 아님 - 불공변)
+```
+
+
+
+### 33 타입 안전 이종 컨테이너를 고려하라
+
+타입 안전 이종 컨테이너 : 키값이 Class<T>를 주어 타입간 안전을 보장
+
+- String.class == Class<String>
+- 예제코드
+
+```
+public class Favorites{
+    private Map<Class<?>, Object> favorites = new HashMap<>();
+    public  <T> void putFavorite(Class<T> type, T instance){
+        //favorites.put(Objects.requireNonNull(type), instance);
+        //런타임 안전성 추가
+        favorites.put(Objects.requireNonNull(type), type.cast(instance));
+    }
+    public  <T> T getFavorite(Class<T> type){
+        return type.cast(favorites.get(type));
+    }
+}
+```
+
+
+
+## 6장 열거 타입과 애너테이션
+
+
+
+### 34 int 상수 대신 열거 타입을 사용하라
+
+
+
+- 아래가 int 상수
+
+```
+public static final int APPLE_FUJI = 0;
+public static final int APPLE_PIPPIN = 1;
+public static final int APPLE_GRANNY_SMITH =2;
+public static final int  ...
+```
+
+- 열거형
+
+```
+public enum Apple {FUJI,PIPPIN,GRANNY_SMITH}
+public enum Orange ...
+```
+
+
+
+- 열거형은 싱글톤
+- 열거형은 근본적으로 불변이라 모든 필드 final
+
+#### 핵심정리
+
+- 열거형이 정수 상수보다 좋다. 더 읽기 쉽고 안전 강력
+- 메서드 추가가능
+- 상수별로 다르게 작동할경우 switch 문 대신 상수별 메서드 구현을 사용하자
+
+
+
+### 35 ordinal 메서드 대신 인스턴스 필드를 사용하라
+
+- ordinal 나중 추가 삭제에 위험
+
+- ordinal 대신 인스턴스 필드사용
+
+- ```
+  enum Ensemble{
+      SOLO(1), DUET(2), TRIPLE_QUARTET(12);
+      
+      private final int numberOfMusicians;
+      Ensemble(int size){ this.numberOfMusicians = size; }
+      public int numberOfMusicians(){ return numberOfMusicians; }
+      
+  }
+  ```
+
+- 
+
+### 36 비트 필드 대신 EnumSet을 사용하라
+
+```
+public class Text{
+  // 구닥다리 기법
+  public static final int STYLE_BOLD = 1 << 0; // 1
+  public static final int STYLE_ITALIC = 1 << 1; // 2
+  public static final int STYLE_UNDERLINE = 1 << 2; // 4
+  public static final int STYLE_STRIKETHROUGH = 1 << 3; // 5
+
+  // 매개변수 styles는 0개 이상의 STYLE_ 상수를 비트별 OR 한 값
+  public void applyStyle(int styles){...}
+}
+```
+
+- text.applyStyles(STYLE_BOLD|STYLE_ITALIC); 메소드를 사용하면 겹치지 않게 사용할 수 있다.
+- 하지만 더 나은 대안이 EnumSet임
+  - EnumSet 내부는 비트 백터로 구현 => 비트 필드에 비견되는 성능을 보여줌
+  - removeAll, retainAll 같은 대량 작업은 효율적으로 처리가능하게 구현
+
+```
+public class Text {
+    public enum Style {BOLD, ITALIC, UNDERLINE, STRIKETHROUGH}
+
+    // 어떤 Set을 넘겨도 되나, EnumSet이 가장 좋다.
+    public void applyStyles(Set<Style> styles) {
+        System.out.printf("Applying styles %s to text%n",
+                Objects.requireNonNull(styles));
+    }
+
+    // 사용 예
+    public static void main(String[] args) {
+        Text text = new Text();
+        text.applyStyles(EnumSet.of(Style.BOLD, Style.ITALIC));
+    }
+}
+```
+
+- 자바 9까진 불변 EnumSet이없다고함 
+  - Collections.unmodifiableSet으로 감싸야함
+
+
+
+### 37 ordinal 인덱싱 대신 EnumMap 을 사용하라
+
+ordinal 절대쓰지말자
+
+EnumMap특징
+
+- Enum 타입을 키값으로 갖음
+
+- 생성시 Enum.class가 필요함
+
+  - new EnumMap<K,V>(Class<K>
+
+  - ```
+        Map<APPLE, String> enummap = new EnumMap<>(APPLE.class);
+        enummap.put(APPLE.A, "A입니다.");
+        enummap.put(APPLE.B, "B입니다.");
+    
+        enummap.forEach((k, v) -> System.out.println(v));
+        // 결과
+        // A입니다.
+        // B입니다.
+        
+        //stream grouping시 다른 Map으로 생성되기때문에 enummap으로 생성하려면 아래코드와 같이 만들어야함
+        //grouping시 enummap으로 생성
+        EnumMap<APPLE, Set<APPLE>> collect = Arrays.stream(APPLE.values()).collect(
+            Collectors.groupingBy(p -> p, () -> new EnumMap<>(APPLE.class), Collectors.toSet()));
+    ```
+
+  - 
