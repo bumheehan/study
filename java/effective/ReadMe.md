@@ -981,8 +981,10 @@ Raw 타입
   | **무변성 \| 불변 (invariant)** | C<T>와 C<T’>는 아무 관계가 없다.                    |
 
 - 배열은 공변임  Super 클래스, Sub 클래스, 
+  
   - Super[] 는 Sub[] 의 슈퍼타입
 - 제네릭은 불변임
+  
   - List<Super> 와 List<Sub>는 서로 관계 X
 
 #### 핵심정리
@@ -1155,4 +1157,84 @@ EnumMap특징
             Collectors.groupingBy(p -> p, () -> new EnumMap<>(APPLE.class), Collectors.toSet()));
     ```
 
-  - 
+
+
+
+### 38 확장할 수 있는 열거 타입이 필요하면 인터페이스를 사용하라
+
+```
+public interface Operation {
+    double apply(double x, double y);
+}
+
+public enum BasicOperation implements Operation {
+
+    PLUS("+") {
+        @Override
+        public double apply(double x, double y) {
+            return x + y;
+        }
+    },
+    MINUS("-") {
+        @Override
+        public double apply(double x, double y) {
+            return x - y;
+        }
+    },
+    TIMES("*") {
+        @Override
+        public double apply(double x, double y) {
+            return x * y;
+        }
+    },
+    DIVIDE("/") {
+        @Override
+        public double apply(double x, double y) {
+            return x / y;
+        }
+    };
+
+    private final String symbol;
+
+    BasicOperation(String symbol) {
+        this.symbol = symbol;
+    }
+}
+
+public enum ExtendedOperation implements Operation {
+
+    EXP("^") {
+        @Override
+        public double apply(double x, double y) {
+            return Math.pow(x, y);
+        }
+    },
+    REMAINDER("%") {
+        @Override
+        public double apply(double x, double y) {
+            return x % y;
+        }
+    };
+
+    private final String symbol;
+
+    ExtendedOperation(String symbol) {
+        this.symbol = symbol;
+    }
+}
+```
+
+#### 핵심정리
+
+- 열거타입 자체는 확장 불가
+- 인터페이스와 인터페이스를 구현하는 기본열거타입을 함께 사용해 같은 효과 가능
+
+
+
+### 39 명명 패턴보다 애너테이션을 사용하라
+
+- 일반적으로 도구 제작자아니고선 애너테이션 만들일은 없다.
+- 자바개발자라면 기본 애너테이션 사용하자
+
+### 40 @Override 애너테이션을 일관되게 사용하라
+

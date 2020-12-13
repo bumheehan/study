@@ -1,7 +1,8 @@
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GenericTest implements Comparable<GenericTest> {
 
@@ -14,11 +15,22 @@ public class GenericTest implements Comparable<GenericTest> {
     return (T) s1;
   }
 
+  enum APPLE {
+    A, B
+  };
+
   public static void main(String[] args) {
-    
-    InheritTest tt= change(new SubClass());
-    
-    InheritTest tt = <InheritTest,SubClass> change(new SubClass());
+    Map<APPLE, String> enummap = new EnumMap<>(APPLE.class);
+    enummap.put(APPLE.A, "A입니다.");
+    enummap.put(APPLE.B, "B입니다.");
+
+    enummap.forEach((k, v) -> System.out.println(v));
+    // A입니다.
+    // B입니다.
+    EnumMap<APPLE, Set<APPLE>> collect = Arrays.stream(APPLE.values()).collect(
+        Collectors.groupingBy(p -> p, () -> new EnumMap<>(APPLE.class), Collectors.toSet()));
+
+
 
   }
 
