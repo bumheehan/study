@@ -210,3 +210,17 @@
 
   
 
+
+
+### 연관관계 매핑
+
+1. 단방향
+2. 양방향
+   - A Entity는 B Entity를 참조, B Entity는 A Entity를 참조
+   - 양방향 관계일때 서로 save하면 데이터가 꼬일 수 있다. 그래서 한쪽만 save되게끔 Owner를 정해줘야한다.
+     - 주인은 mappedBy 속성을 사용하지 않습니다.
+     - 주인이 아니면 mappedBy 속성을 사용해서 속성의 값으로 연관관계의 주인을 정할 수 있습니다.
+
+
+
+https://victorydntmd.tistory.com/208

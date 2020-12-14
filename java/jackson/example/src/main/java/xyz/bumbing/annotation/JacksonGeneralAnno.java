@@ -5,9 +5,18 @@ import java.util.Date;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ser.FilterProvider;
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 
 import xyz.bumbing.custom.Views;
+import xyz.bumbing.model.general.CustomAnnotationModel;
+import xyz.bumbing.model.general.JsonFilterModel;
 import xyz.bumbing.model.general.JsonFormatModel;
+import xyz.bumbing.model.general.JsonIndentityInfoModel;
+import xyz.bumbing.model.general.JsonIndentityInfoModel.JsonIndentityInfoModel2;
+import xyz.bumbing.model.general.JsonManagedReferenceModel;
+import xyz.bumbing.model.general.JsonManagedReferenceModel.JsonBackReferenceModel;
 import xyz.bumbing.model.general.JsonPropertyModel;
 import xyz.bumbing.model.general.JsonUnwrappedModel;
 import xyz.bumbing.model.general.JsonViewModel;
@@ -75,6 +84,46 @@ public class JacksonGeneralAnno {
 	} catch (Exception e) {
 	    e.printStackTrace();
 	}
+	println("------------------------------------");
+
+	println("JsonManagedReference/JsonBackReference 예제");
+	//순환 참조 만들기
+	JsonManagedReferenceModel managed = new JsonManagedReferenceModel(1, "book", null);
+	JsonBackReferenceModel back = new JsonBackReferenceModel(2, "Han", managed);
+	managed.back = back;
+	//serialize
+	serialize(managed);
+	println("------------------------------------");
+
+	println("JsonIdentityInfo 예제");
+	//순환 참조 만들기
+	JsonIndentityInfoModel i1 = new JsonIndentityInfoModel(1, "book", null);
+	JsonIndentityInfoModel2 i2 = new JsonIndentityInfoModel2(2, "Han", i1);
+	i1.back = i2;
+	//serialize
+	serialize(i1);
+	println("------------------------------------");
+
+	println("JsonFilter 예제");
+	JsonFilterModel filter = new JsonFilterModel("han", 31);
+	FilterProvider fb = new SimpleFilterProvider().addFilter("MyFilter",
+		SimpleBeanPropertyFilter.filterOutAllExcept("name"));
+	try {
+	    String se = new ObjectMapper().writer(fb).writeValueAsString(filter);
+	    println(se);
+	} catch (Exception e) {
+	    e.printStackTrace();
+	}
+	println("------------------------------------");
+
+	println("CustomAnnotation 예제");
+	json = "{\"f1\":\"ff1\"}";
+	deserialize(CustomAnnotationModel.class, json);
+	CustomAnnotationModel custom = new CustomAnnotationModel();
+	custom.f1 = "f1";
+	//	custom.f2 = "f2";
+	serialize(custom);
+
 	println("------------------------------------");
     }
 }

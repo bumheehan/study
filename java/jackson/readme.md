@@ -828,15 +828,200 @@ Input 값에 따라서 다른 서브 클래스로 Deserialize 해야하는 경�
 
 - **@JsonManagedReference, @JsonBackReference**
 
+  - 설명 : 순환 참조할때 중요!
+
+    - @JsonManagedReference
+      - 양방향 관계에서 정방향 참조할 변수에 어노테이션을 추가하면 직렬화에 포함된다
+    - @JsonBackReference
+      - 양방향 관계에서 역방향 참조로 어노테이션을 추가하면 직렬화에서 제외된다
+
+  - 위치 : 부모 클래스 필드에 JsonManagedReference, 자식 클래스 필드에 JsonBackReference
+
+  - 예제
+
+    - ```
+      @AllArgsConstructor
+      @NoArgsConstructor
+      public class JsonManagedReferenceModel {
+      
+          public int id;
+          public String itemName;
+          @JsonManagedReference
+          public JsonBackReferenceModel back;
+      
+          @AllArgsConstructor
+          @NoArgsConstructor
+          public static class JsonBackReferenceModel {
+      
+      	public int id;
+      	public String name;
+      	@JsonBackReference
+      	public JsonManagedReferenceModel managed;
+      
+          }
+      }
+      
+      void main(){
+          JsonManagedReferenceModel managed = new JsonManagedReferenceModel(1, "book", null);
+              JsonBackReferenceModel back = new JsonBackReferenceModel(2, "Han", managed);
+              managed.back = back;
+      }
+      
+      //Out : {"id":1,"itemName":"book","back":{"id":2,"name":"Han"}}
+      ```
+
+  - 의견 : 순환 참조 해결방법 중 하나
+
+    - 테스트할때 JsonBackReference필드는 제외되는것이 보이는데 JsonManagedReference는 없는것과 차이점을 모르겠음, 우선 사용할때는 두개다 사용하기
+
 - **@JsonIdentityInfo**
+
+  - 설명 : 객체에 Identity 주고 중복된 ID는 Json으로 변환 안시킴 , 위와 같이 순환 참조일때 사용
+
+  - 위치 : 클래스
+
+  - 옵션
+
+    - generator
+      - IntSequenceGenerator : @id 필드 생성하고 1부터 1씩 증가
+      - PropertyGenerator : 아이디 필드 지정
+
+  - 예제
+
+    - ```java
+      @AllArgsConstructor
+      @NoArgsConstructor
+      @JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class)
+      public class JsonIndentityInfoModel {
+      
+          public int id;
+          public String itemName;
+          public JsonIndentityInfoModel2 back;
+      
+          @AllArgsConstructor
+          @NoArgsConstructor
+          @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
+          public static class JsonIndentityInfoModel2 {
+      
+      	public int id;
+      	public String name;
+      	public JsonIndentityInfoModel managed;
+      
+          }
+      }
+      
+      void Main(){
+      	JsonIndentityInfoModel i1 = new JsonIndentityInfoModel(1, "book", null);
+      	JsonIndentityInfoModel2 i2 = new JsonIndentityInfoModel2(2, "Han", i1);
+      	i1.back = i2;
+      }
+      
+      Out : {"@id":1,"id":1,"itemName":"book","back":{"id":2,"name":"Han","managed":1}}
+      //IntSequenceGenerator 은 @id가 붙음  
+      
+      ```
+
+  - 의견 : 이것도 순환참조에 많이  사용
 
 - **@JsonFilter**
 
+  - 설명 : Json Serialization 할때 필터링하여 특정 필드만 보여 주거나 할때 사용
 
+  - 위치 : 클래스
+
+  - 예제
+
+    - ```
+      @JsonFilter("MyFilter")
+      public class JsonFilterModel {
+      
+          public String name;
+          public int age;
+      
+      }
+      
+      JsonFilterModel filter = new JsonFilterModel("han", 31);
+      	FilterProvider fb = new SimpleFilterProvider().addFilter("MyFilter",
+      		SimpleBeanPropertyFilter.filterOutAllExcept("name"));
+      	try {
+      	    String se = new ObjectMapper().writer(fb).writeValueAsString(filter);
+      	    println(se);
+      	} catch (Exception e) {
+      	    e.printStackTrace();
+      	}
+      	
+      
+      Out : {"name":"han"}
+      ```
+
+  - 의견 : JsonView가 조금 더 편해보임  
 
 ### **Custom Jackson Annotation**
+
+나만의 Custom Annotation 생성
+
+- @**JacksonAnnotationsInside** 
+
+  - 설명 : custom annotation 생성할때 사용
+
+  - 위치 : 어노테이션 인터페이스
+
+  - 예제
+
+    - ```
+      @Retention(RetentionPolicy.RUNTIME)
+      @JacksonAnnotationsInside
+      @JsonInclude(Include.NON_NULL)
+      @JsonPropertyOrder({ "f2", "f1" })
+      public @interface CustomAnnotation {
+      }
+      
+      
+      @CustomAnnotation
+      public class CustomAnnotationModel {
+          public String f1;
+          public String f2;
+      }
+      
+      In : {"f1":"f1","f2":"f2"}
+      Out : CustomAnnotationModel(f1=ff1, f2=ff2)
+      
+      In : CustomAnnotationModel(f1=f1, f2=f2)
+      Out : {"f2":"f2","f1":"f1"}
+      
+      In : CustomAnnotationModel(f1=f1, f2=null)
+      Out : {"f1":"f1"}
+      ```
 
 ### **Jackson MixIn Annotations**
 
 ### **Disable Jackson Annotation**
 
+ObjectMapper에서 jackson 어노테이션 무효화 시킬 수 있음
+
+```
+ObjectMapper mapper = new ObjectMapper();
+mapper.disable(MapperFeature.USE_ANNOTATIONS);
+```
+
+
+
+### 순환참조
+
+A객체는 B객체를, B객체는 A객체를 가지고 있는 양방향 관계일때 순환 참조라고 하고 Json Serialize시 무한루프를 가지게 된다.
+
+보통 JPA 연관관계일때 발생. 
+
+##### 해결방법 
+
+1. Entity로 반환하지 않고, DTO를 적극 활용 (영한이형 픽)
+2. Json으로 직렬화 할 속성에서 무시 해버리기 (`@JsonIgnore`)
+3. 직렬화할 대상 객체의 toString override하여 재정의하기
+4. `@JsonManagedReference`, `@JsonBackReference` 어노테이션으로, 직렬화 방향을 설정을 통해 해결
+5. `@JsonIdentityInfo`을 통해 순환참조될 대상의 식별키로 구분해 더이상 순환참조되지 않게 하기
+
+#### 영한이 형 픽
+
+애플리케이션이 정말 단순하면 @JsonIgnore로 해결하면 됩니다. 하지만 이것은 화면이나 API 로직이 엔티티에 침범하는 모양이기 때문에 조금만 애플리케이션이 복잡해져도 권장하지 않습니다.
+
+제가 권장하는 방법은 API당 별도의 DTO 클래스를 만들어서 중간에 엔티티를 DTO로 변환하고, 변환한 DTO를 JSON으로 바꾸시는 것을 권장합니다. 결과적으로 스프링 컨트롤러에서 엔티티 대신에 API 스펙에 딱 맞는 DTO를 반환하시는 것을 권장합니다.
