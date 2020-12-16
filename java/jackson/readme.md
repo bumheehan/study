@@ -94,9 +94,9 @@
   - 예제
 
   	- ```
-    JsonRawValue
-      normalField  : 없는 것
-    testField : 있는 것
+      JsonRawValue
+        normalField  : 없는 것
+        testField : 있는 것
       
       {"normalField":"{\n  \"attr\":false\n}","testField":{
       "attr":false
