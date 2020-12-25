@@ -1,4 +1,4 @@
-# Effective Java
+# `Effective Java
 
 효율적으로 자바 코딩
 간단하게 정리 => 이해 못하는 내용 다음 회차에서 확인
@@ -1238,3 +1238,1405 @@ public enum ExtendedOperation implements Operation {
 
 ### 40 @Override 애너테이션을 일관되게 사용하라
 
+- @Override 애너테이션 쓰면 override 된지 알 수 있음 ,  부모에 없는메소드에 @Override하면 에러 발생
+- equals(Object object)를 재정의하고 싶은데 equals(A a)으로 Overloading 하는 실수를 했다면 @Override에서 에러가 발생, 하지만 @Override를 안쓸경우 모르고 지나칠 수가 있다.
+
+### 41 정의하려는 것이 타입이라면 마커 인터페이스를 사용하라
+
+마커 인터페이스 : 자신을 구현하는 클래스가 특정 속성을 가짐을 표시하는 인터페이스
+
+마커 애너테이션 : 위와 같은 의미
+
+- 대표 마커 인터페이스 Serializable
+- 마커에너테이션보다 좋은 부분 :
+  - 마커인터페이스는 구현한 인스턴스들을 구분(인터페이스로) 할 수 있다.
+  - 마커 애너테이션으로 런타임에 발견될 오류를 컴파일 과정에서 잡을 수 있다.
+  - **마커 인터페이스에 해당하는 객체를 매개변수로 받는 메서드를 작성할 필요 있을때는 마커인터페이스 사용, 그외 모두 마커 애너테이션 사용**
+
+
+
+## 람다와 스트림
+
+
+
+### 42 익명클래스보단 람다 사용하라
+
+- 익명 클래스보단 람다 사용
+- **람다는 이름이 없고 문서화도 못함, 코드 자체동작이 명확히 설명되지 않거나 코드 줄 수가 많아지면 람다를 쓰지 말아야한다.**
+- 람다는 한 줄일때 가장 좋고 세줄 넘어가면 가독성이 심하게 나빠짐
+
+- 람다에서 this는 바깥 인스턴스, 익명클래스에서 this 는 익명 클래스 인스턴스 자신을 가리킴
+
+
+
+### 43 람다보다는 메서드 참조를 사용하라
+
+- `(x,y)->x+y` 대신 `Integer::sum`을 사용하면 간결하고 명확해짐
+- `Function.identity()` 대신 `(x)->x` 가 명확함
+- 가독성 차이가 있어서 자주 쓰는 메서드는 메서드 참조가 낫고, 그게아니면 람다가 쓰자
+
+
+
+- 자주 쓰는 유형
+  - 정적
+    - Integer::parseInt
+      - str -> Integer.parseInt(str)
+  - 한정적(인스턴스)
+    - Instant.now()::isAfter
+      - Instant then = Instant.now();
+      - t -> then.isAfter(t)
+  - 비한정적(인스턴스)
+    - String::toLowerCase
+      - str -> str.toLowerCase()
+  - 클래스 생성자
+    - TreeMap<K,V>::new
+      - () -> new TreeMap<K,V>()
+  - 배열 생성자
+    - int[]::new 
+      - len -> new int[len]
+
+### 44  표준 함수형 인터페이스를 사용하라
+
+- 표준 함수형 인터페이스
+  - UnaryOperator<T> 	
+    - T 타입 받아서 T 타입 으로 나감
+    - String::toLowerCase
+  - BinaryOperator<T>
+    - T타입 두개 받아서 T타입 하나로 나감
+    - (T t1, T t2) -> T t
+    - BigInteger::add
+  - Predicate<T> 
+    - T-> boolean
+  - Function<T,R>
+    - T->R
+  - Supplier<T>
+    - ()->T
+  - Consumer<T>
+    - (T)->{}
+
+- 필요하면 직접 Functional Interface 직접 설계
+
+
+
+### 45 스트림은 주의해서 사용하라
+
+
+
+- 기존코드는 스프림으로 사용하도록 리팩터링하되, 새 코드가 더 나아보일때만 반영
+- 스트림 사용하면 안되는 상황
+  - 코드 블록안에서 지역변수를 읽고 수정할 수 있다. 하지만 람다에서는 final인 변수만 읽을 수 있다.
+  - 코드 블록에서는 return , break, continue 문으로 블록 바깥의 반복문을 종료하거나 반복해서 건너뛸 수 있다. -> 람다 불가능
+    - 기존 메서드 선언에서 Checked Exception 예외 던질 수 있는데 람다는 불가능하다고함. 확인 필요
+  - 한데이터가 파이프라인의 여러 단계를 통과 할때 이 데이터의 각 단계에서의 값들에 동시에 접근하기는 어려운 경우다. ?
+    - 이중 for문 그 이상인건 스트림하지말자
+  - 위의 일을 수행한다면 람다 금지
+- 스트림 적용하기에 좋은 로직
+  - 원소들의 시퀀스를 일관되게 변환한다.
+  - 원소들의 시퀀스를 필터링한다. 
+  - 원소들의 시퀀스를 하나의 연산을 사용해 결합한다. (더하기, 연결하기, 최솟값 등)
+  - 원소들의 컬렉션에 모은다.(공통된 속성으로)
+  - 원소들의 시퀀스에서 특정 조건을 만족하는 원소를 찾는다.
+- 스트림 for중에 어떤게 나은지모르면 둘다 해보고 더 나은쪽 선택하라
+
+
+
+### 46 스트림에서는 부작용 없는 함수를 사용하라
+
+
+
+- forEach 연산은 스트림 계산 결과를 보고할 때만 사용하고, 계산하는 데는 쓰지 말자
+  - 물론 가끔 스트림 계산결과를 기존 컬렉션에 추가하는 등의 다른 용도로 쓸 수 있다.
+- 스트림 잘 사용하려면 Collector를 잘 알아야한다.
+  - Collector 설명은 인터넷에서보자
+
+### 47  반환 타입으로는 스트림보다 컬렉션이다
+
+
+
+- 멱집합 관련 처리가 처음봐서 정리
+  - 이진법으로 처리가능
+  - a,b,c 의 멱집합 {}, {a},{b},{c},{a,b},{a,c},{b,c},{a,b,c}
+  -  원소 0 0 0 부터 1 1 1 까지 총 2^n-1 개
+  - 최대 처리원소 integer인경우 2^31-1(Integer MAX_VALUE)로 제한이라 총 30개정도 원소까지 이방식으로 처리가능  
+
+- 원소 시퀀스를 반환할때는 스트림으로 처리하기를 원하는사람과,  반복문으로 처리하기를 원하는 사람이 있다는것을 떠올리고 양쪽다 만족시키기자
+- 반환은 List로 하고 원소가 적으면 ArrayList , 원소가크면 전용 컬렉션만들어서 사용
+- 컬렉션을 반환이 힘들면 Iterable과 스트림중 더 자연스러운 것을 반환
+
+
+
+### 48 병렬화는 주의해서 적용하라
+
+- 병렬화 효과가 좋은 타입
+  - ArrayList
+  - HashMap
+  - HashSet
+  - ConcurrentHashMap
+  - 배열
+  - int 범위
+  - long 범위
+
+- Stream.iterate 또는 limit은 병렬화 X
+
+- 적합 메소드
+
+  - reduce
+  - min,max,count,sum
+  - anyMatch,AllMatch,noneMatch
+  - 가변축소(mutable reduction)는 해당 안됨
+
+- 병렬 스트림을 사용하기위한 조건
+
+  - 원소들의 간섭X 
+  - 동기화 X
+  - 등 찾아보기 
+  - 보통 모든 계산하여 마지막까지 원소 하나가 다른원소에 영향을 받지않고 독립적으로 작동할때 사용하는것이 좋아보임
+
+- 무작위 랜덤 스트림 
+
+  - ThreadLocalRandom
+  - SplittableRandom
+  - Random은 모든 연산을 동기화한다고해서 병렬에서는 절대 사용금지
+
+  
+
+
+
+
+
+## 8장 메서드
+
+
+
+### 49 매개변수가 유효한지 검사하라
+
+- 오류는 가능 한 빨리 잡아야 한다. (발생한 곳에서)
+
+- **매서드 초기에 매개변서 null 체크 , 혹은 잘못된 데이터  유효성 체크**
+  - 보통 에러
+    - IllegalArgumentException
+    - IndexOutOfBoundsException
+    - NullPointerException
+  - 매개변수가 잘못 됐을때 던지는 예외도 함께 기술 !
+- 자바 9 에서는 `requireNonNull` 이외에 `checkFromIndexSize`, `checkFromToIndex`, `checkIndex` 검사 메서드 추가
+  - null체크 이외에 잘 안쓸듯
+
+
+
+### 50 적시에 방어적 복사본을 만들라
+
+- Date는 불변 객체가 아니라서 외부에서 데이터 변경가능 , 사용 금지
+
+  - ```
+    import java.util.Date;
+    
+    class Period {
+        private final Date start;
+        private final Date end;
+    
+        public Period(Date start, Date end) {
+            if(start.compareTo(end) > 0) {
+                throw new IllegalArgumentException(start + " after " + end);
+            }
+            this.start = start;
+            this.end = end;
+        }
+        public Date start() { return start; }
+        public Date end() { return end; }
+        // ... 생략
+    }
+    
+    class Item50Test {
+        public void someMethod() {
+            Date start = new Date();
+            Date end = new Date();
+            Period period = new Period(start, end);
+    
+            // deprecated method
+            // period의 내부를 수정했다.
+            end().setMonth(3);
+        }
+    
+        public static void main(String[] args) {
+            Item50Test main = new Item50Test();
+            main.someMethod();
+        }
+    }   
+    ```
+
+- ZonedDateTime/ LocalDateTime으로 대체 - 불변
+
+- **복사본 데이터를 만들어 완전 무결성으로 해야함 **
+
+  - ```
+    class Period {
+        private final Date start;
+        private final Date end;
+    
+        public Period(Date start, Date end) {
+            this.start = new Date(start.getTime());
+            this.end = new Date(end.getTime());
+    
+            if(start.compareTo(end) > 0) {
+                throw new IllegalArgumentException(start + " after " + end);
+            }
+        }
+        public Date start() { 
+            return new Date(start.getTime());
+        }
+        public Date end() { 
+            return new Date(end.getTime());
+        }
+        // ... 생략
+    }
+    ```
+
+  - 
+
+
+
+#### 핵심 정리
+
+- 클래스가 클라이언트로부터 받은 혹은 클라이언트로 반환하는 구성요소가 **가변** 이라면 그 요소는 반드시 방어적으로 복사해야 한다.!!!!!!!!
+
+- 복사비용이크거나 (대형객체) 요소를 잘못 수정할 일이 없다면 방어적 복사를 수행하는 대신 해당 구성요소를 수정했을
+
+
+
+### 51 매서드 시그니처를 신중히 설계하라
+
+- 매서드 이름을 신중히 짓자
+  - 같은 패키지에 속한 다른 이름들과 일관되게 짓는 게 최우선 목표
+  - 긴 이름은 피하자
+  - 커뮤니티에서 널리 받아들여지는 이름을 사용
+- 편의 메서드를 너무 많이 만들지 말자
+  - 메서드 많은 클래스는 공부하기어렵다.
+
+- 매개변수 목록은 짦게 유지하자 4개 이하가 좋다.
+  - **같은타입 매개변수가 여러개 나오는 것은 특히 해롭다.**
+  - 과하게 긴 매개변수 목록을 짧게 줄여주는 3가지 기술
+    1. 여러 매서드로 쪼갠다. ->메서드가 많아 질 수 있지만 직교성(orthogonality, 성분끼리 상관 x) 을 높여 오히려 메서드 수를 줄여주는 효과도 있다.
+    2. 매개변수 여러 개를 묶어주는 static class를 생성한다.
+    3. 매개변수가 많을때 builder 패턴을 사용
+- 매개변수 타입으로 클래스보다 인터페이스가 더 낫다.
+- **boolean 보단 원소 두 개 짜리 열거 타입이 낫다.**
+
+
+
+### 52 다중정의(Overloading)는 신중히 사용하라
+
+- 예제를 통해서 보는게 빠름
+
+  - ```java
+    public class CollectionClassifier {
+        public static String classify(Set<?> s) {
+            return "Set";
+        }
+    
+        public static String classify(List<?> lst) {
+            return "List";
+        }
+    
+        public static String classify(Collection<?> c) {
+            return "Unknown Collection";
+        }
+    
+        public static void main(String[] args) {
+            Collection<?>[] collections = {
+                    new HashSet<>(),
+                    new ArrayList<>(),
+                    new HashMap<String, String>().values()
+            };
+    
+            for (Collection<?> c : collections)
+                System.out.println(classify(c));
+        }
+    }
+    ```
+
+  - 결과 Unknown Collection 만 세번 나옴 
+
+  - 컴파일과정에서 어느 메서드 호출할지 결정난다고 그러는데 그것보다 Collection을 넣었으니 Unknown Collection이 나오는거 아닐가... 뭔가 당연한데 아니라고하니 이상함
+
+  - 아래같이 정의 하는게 좋다고함 하나에서 나눠지는 방향
+
+  - ```java
+    //하나만 정의하고 안에서 타입에 따라 다르게 진행
+    public static String classify(Collection<?> c) {
+    		return c instanceof Set ? "Set" : c instanceof List ? "List" : "Unknown Collection";
+    }
+    ```
+
+- Overriding 매커니즘
+
+  - ```
+    class Wine {
+        String name() {
+            return "wine";
+        }
+    }
+    
+    class SparklingWine extends Wine {
+        @Override
+        String name() {
+            return "sparkling wine";
+        }
+    }
+    
+    class Champagne extends SparklingWine {
+        @Override
+        String name() {
+            return "champagne";
+        }
+    }
+    
+    public class Overriding {
+        public static void main(String[] args) {
+            Wine[] wines = {
+                    new Wine(), new SparklingWine(), new Champagne()
+            };
+            for (Wine wine : wines)
+                System.out.println(wine.name());
+        }
+    }
+    ```
+
+  - 결과 : wine / sparkling wine / champagne 순으로 나옴 
+
+- 다중정의 실수 사례
+
+  - ```java
+    public class SetList {
+    
+        public static void main(String[] args) {
+            Set<Integer> set = new TreeSet<>();
+            List<Integer> list = new ArrayList<>();
+    
+            for (int i = -3; i < 3; i++) {
+                set.add(i);
+                list.add(i);
+            }
+    
+            for (int i = 0; i < 3; i++) {
+                set.remove(i);
+                list.remove(i);
+            }
+            System.out.println(set + " " + list);
+        }
+    }
+    ```
+
+  - 원했던 결과는 [-3,-2,-1] [-3,-2,-1] 이었는데 [-3,-2,-1] [-2,0,2] 가 출력
+
+  - remove(int index) , remove(Object object)는 서로 다른 의미 , 앞에꺼는 인덱스를 삭제, 뒤에 꺼는 값을 삭제. 위의 경우에는 Integer로 형변환하여 사용
+
+  - ```
+     list.remove((Integer)i);
+    ```
+
+### 53 가변 인수는 신중히 사용하라
+
+
+
+- 가변 변수는 배열을 생성
+
+- 모든 값을 가변변수로 두어 매개변수 유효성 검사할 바엔 하나 분리
+
+  - ```
+    static int min(int... args) {
+            if (args.length == 0)
+                throw new IllegalArgumentException("인수가 1개 이상 필요합니다.");
+            int min = args[0];
+            for (int i = 1; i < args.length; i++)
+                if (args[i] < min)
+                    min = args[i];
+            return min;
+        }
+    ```
+
+  - 잘한것 같지 만 지저분함
+
+  - ```
+    static int min(int firstArg, int... remainingArgs) {
+            int min = firstArg;
+            for (int arg : remainingArgs)
+                if (arg < min)
+                    min = arg;
+            return min;
+        }
+    ```
+
+- 보통 5개 미만으로 95% 사용한다고할때 5개 정의
+
+  - ```
+    public void foo(){}
+    public void foo(int a1){}
+    public void foo(int a1,int a2){}
+    public void foo(int a1,int a2,int a3){}
+    public void foo(int a1,int a2,int a3,int... rest){}
+    ```
+
+
+
+### 54 null이 아닌, 빈 컬렉션이나 배열을 반환하라
+
+- **반환을 null로 하면 사용하는 메서드에서 null 체크를 함**
+
+  - ```java
+    package com.github.sejoung.codetest.methods;
+    
+    import java.util.ArrayList;
+    import java.util.List;
+    
+    public class NullCollectionsTest {
+    
+        private final static List<Cheese> cheesesInStock = new ArrayList<>();
+    
+    
+        public List<Cheese> getCheeses() {
+            return cheesesInStock.isEmpty() ? null : new ArrayList<>(cheesesInStock);
+        }
+    
+        public static void main(String[] args) {
+            NullCollectionsTest shop = new NullCollectionsTest();
+            cheesesInStock.add(Cheese.STILTON);
+    
+            List<Cheese> cheeses = shop.getCheeses();
+    
+            if(cheeses != null && cheeses.contains(Cheese.STILTON)){
+                System.out.println("좋았어 바로 그거야");
+            }
+        }
+    }
+    ```
+
+  - null 리턴하면  `cheeses != null ` 체크를 해야함 
+
+  - ```java
+    //리스트
+    public List<Cheese> getCheeses() {
+        return cheesesInStock.isEmpty() ? Collections.emptyList() : new ArrayList<>(cheesesInStock);
+        //아래처럼 계속 객체를 생성하는것보다 빈거면 빈 불변객체를 내보내는게 최적화에 좋다.
+        //return new ArrayList<>(cheesesInStock);
+        
+    }
+    //배열
+    public Cheese[] getCheeses() {
+        return cheesesInStock.toArray(new Cheese[0]);
+    }
+    ```
+
+  - 
+
+
+
+### 55 옵셔널 반환은 신중히 하라
+
+- Optional 반환 메서드에서 null 반환은 절대금지. 
+- `orElse` `orElseThrow` 등을 사용하여 유용하게 사용
+- **컬렉션,스트림, 배열, 옵셔널 같은 컨테이너 타입은 옵셔널로 감싸면 안된다.!!!!**
+- 기본형 OptionalInt, OptionalLong, OptionalDouble 타입이 있다.
+
+
+
+#### 핵심정리
+
+- 값을 반환하지 못할 가능성이 있고, 호출할 때마다 반환값이 없을 가능성을 염두에 둬야 하는 메서드라면 옵셔널을 반환 해야 할 상황 일 수 있다. 
+- 하지만 옵셔널 반환에는 성능 저하가 뒤따르니 , 성능에 민감한 메서드라면 null을 반환하거나 예외를 던지는 편이나을 수 있다. 
+- 그리고 옵셔널을 반환값 이외의 용도로 쓰는 경우는 매우 드물다
+
+
+
+### 56 공개된 API 요소에는 항상 문서화 주석을 작성하라
+
+- javadoc 사용
+  - @throws : 예외 암시적 기술
+  - @param : 매개변수 기술
+  - @return : 반환타입 태그
+  - {@code XXXX} : 코드용 폰트로 렌더링 및 HTML 메타문자 < 기호등 사용가능
+    - 여러줄 일경우 <pre> {@code} </pre> 으로 사용
+  - @implSpec : 해당 메서드와 하위 클래스 사이의 계약을 설명 ? , 그냥 메서드 설명
+  - 
+- 메서드용 문서화
+  - 메서드와 클라이언트 사이의 규약을 명료하게 기술
+  - **메서드가 어떻게 동작하는지 가아니라 무엇을 하는지 기술!**
+
+
+
+- 더 문서화에 관련된 내용이 있음, 나중에 보기
+
+
+
+
+
+## 일반적인 프로그래밍 원칙
+
+
+
+
+
+### 57 지역변수의 범위를 최소화하라
+
+- 지역변수의 범위를 줄이는 가장 강력한 기법은 `가장 처음 쓰일 때 선언 하기`다.
+
+  - 먼곳에서 미리 선언하면 가독성이 떨어진다. => 변수 실행 시점에 초기값 ,타입이 기억안날 수 있다.
+
+- 모든 지역변수는 선언과 동시에 초기화
+
+  - try-catch문의 예외
+
+    - 초기화 과정에서 에러 발생할 수 있다면 try 안에서 해야함
+
+    - 기존에 하던대로 앞에서 null 값주고 try 안에서 처리
+
+    - ```
+      List<String> list = null
+      try{
+      	list = ...
+      }
+      ...
+      ```
+
+- while 대신 for를 써라
+
+  - 반복문 뒤에 변수값을 써야하는게 아니라면 while보단 for가 좋다.
+
+- 해당 챕터 특별한 내용은 없음
+
+
+
+### 58 전통적인 for 문 보다는 for-each 문을 사용하라
+
+- 사용못하는 조건만 정리함
+  - 파괴적인 필터링(destructive filtering) : 컬렉션 순회하면서 원소 제거
+    - removeIf로 해결
+  - 변형(transforming) : 리스트나 배열 순회 하면서 그 원소값 일부 혹은 전체를 교체한다면 리스트 반복자나 인덱스를 사용해야함
+  - 병렬 반복 : 여러 컬렉션을 병렬로 순회해야 한다면 각각의 반복자와 인덱스 변수를 사용해 엄격하고 명시적으로 제어해야 한다.
+- for-each문은 Iterable 인터페이스를 구현한 객체라면 무엇이든 순회 가능
+
+
+
+#### 핵심
+
+- 순회 삭제 : removeIf
+- 인덱스 필요 => for-each X
+
+### 59 라이브러리를 익히고 사용하라
+
+- Java 7부터는 Random 대신 ThreadLocalRandom 으로 대체
+  - 빠름
+  - 병렬 스트림에서는 SplittableRandom 을 사용
+- 표준라이브러리 이점
+  - 코드 작성한 전문가 지식과 여러분보다 앞서 사용한 다른 프로그래머들의 경험을 활용 가능
+  - 핵심적인 일과 크게 관련 없는 문제를 핵결하느라 시간 허비 안해도됨
+  - 따로 노력안해도 성능이 지속해서 개선
+  - 기능이 점점 발전
+  - 여러분이 작성한 코드가 많은 사람에게 낯익은 코드가 된다. => 유지보수, 가독성 등 이점
+- 표준라이브러리가 있는데 만들어 사용하는 이유
+  - 해당 기능이 있는지 모름
+  - 메이저 릴리즈마다 주요 기능 확인 필요
+    - 예 java9 에서 transferTo 추가됨
+- 자바 개발자라면 java.lang , java.util, java.io는 익숙 해야함
+
+### 60 정확한 답이 필요하면 float와 double은 피하라
+
+- 부동소수점연산이라 근사치로 계산되도록 설계함 따라서 정확한 답을 원할때는 double, float 타입은 사용금지
+
+- 금융계산에는 BigDecimal, int , long 만 사용
+
+- BigDecimal 단점
+  - 기본타입보다 쓰기 불편하고 느림
+  - 단발성계산이라면 느린거는 괜찮음
+
+### 61 박싱된 기본 타입보다는 기본 타입을 사용하라
+
+- 박싱된 기본타입에 == 는 주소값 비교
+- 박싱된 기본타입  초기값 null
+  - null을 언박싱하면 NullPointerException 뜸
+- 제네릭쓸때만 사용
+
+### 62 다른 타입이 적절하다면 문자열 사용을 피하라
+
+- 문자열은 열거타입을 대신하기에 적합하지 않다.
+- 문자열을 혼합 타입을 대신하기에 적합하지 않다.
+
+
+
+- 다른 타입을 확인하기 위해 문자열 파싱하여 비교함 
+
+
+
+### 63 문자열 연결은 느리니 주의하라
+
+- 문자열 연결은 모두 Stringbuilder로 변경됨 (자바 1.4?)
+
+- 하지만 순회(for) 안에 문자열 더하기를 넣으면 StringBuilder도 여러개 생성됨 아래와 같은일이 없어야함
+
+  - ```
+    String AA = ""
+    for(int i =0;i<100;i++){
+    	AA+=i;
+    }
+    //컴파일
+    for(int i =0;i<100;i++){
+    	(new StringBuilder(String.valueOf(AA))).append(i).toString();  
+    }
+    
+    //대체
+    StringBuilder AA = new StringBuilder();
+    for(int i =0;i<100;i++){
+    	AA.append(i);  
+    }
+    ```
+
+
+
+### 64 객체는 인터페이스를 사용해 참조하라
+
+- `Set<Integer> set = new HashSet<>();` 다음과 같이 사용
+
+- 의존성 낮춰 성능에 맞는 구현클래스 변경 가능
+
+  - HashSet -> LinkedHashSet
+
+- 인터페이스가 아닌 참조 
+
+  - 적합한 인터페이스 없으면 클래스 참조
+    - String/BigInteger 같은 경우
+  - 적합한 인터페이스 없으면 추상 클래스 참조
+    - OutputStream 같은 경우
+  - 인터페이스에 없는 특별한 메서드를 제공하는 클래스
+    - PriorityQueue 같은경우 Queue 에없는 comparator 메서드가 있음
+    - 이런 추가 메소드 사용할 일 없으면 Queue로 사용
+
+  
+
+### 65 리플렉션보다는 인터페이스를 사용하라
+
+- 리플렉션을 사용하면 임의의 클래스에 접글할 수 있다. 
+- 이점
+  - 컴파일 당시 없던 클래스도 이용가능
+  - 어노테이션 사용가능
+- 단점
+  - 컴파일러가 주는 타입 검사 이점을 하나도 누릴 수 없다.
+  - 리플렉션을 이용하면 코드가 지저분하고 장황해진다.
+  - 성능이 떨어진다.
+    - 일반 메서드 호출보다 느리다. 책에서 저자 테스트해본결과 11배 느리다고함
+
+- 아주 제한된 형태로만 사용해야 그 단점을 피하고 이점만 취할 수 있다.
+
+  - **리플렉션은 인스턴스 생성에만 사용하고 이렇게 만든 인스턴스는 인터페이스나 상위 클래스로 참조해 사용하자!!!**
+
+  - ```java
+    public static void main(String[] args) {
+        
+        // 클래스 이름을 Class 객체로 변환
+        Class<? extends Set<String>> cl = null;
+        try {
+            cl = (Class<? extends Set<String>>) Class.forName(args[0]); //비검사 형변환
+        } catch (ClassNotFoundException e) {
+            fatalError("클래스를 찾을 수 없습니다.");
+        }
+        
+        // 생성자를 얻는다.
+        Constructor<? extends Set<String>> cons = null;
+        try {
+            cons = cl.getDeclaredConstructor();
+        } catch (NoSuchMethodException e) {
+            fatalError("매개변수 없는 생성자를 찾을 수 없습니다.");
+        }
+         
+        //집합의 인스턴스를 만든다.
+        Set<String> s = null;
+        try {
+            s = cons.newInstance();
+        } catch (IllegalAccessException e) {
+            fatalError("생성자에 접근할 수 없습니다.");
+        } catch (InstantiationException e) {
+            fatalError("클래스를 인스턴스화할 수 없습니다.");
+        } catch (InvocationTargetException e) {
+            fatalError("생성자가 예외를 던졌습니다: " + e.getCause());
+        } catch (ClassCastException e) {
+            fatalError("Set을 구현하지 않은 클래스입니다.");
+        }
+        
+        //생성한 집합을 사용한다.
+        s.addAll(Arrays.asList(args).subList(1, args.length));
+        System.out.println(s);
+    }
+    
+    private static void fatalError(String msg) {
+        System.err.println(msg);
+        System.exit(1);
+    }
+    ```
+
+  - 
+
+### 66 네이티브 메서드는 신중히 사용하라
+
+- 성능목적으로 네이티브메서드 사용하는 것은 거의 권장안함
+  - 성능상 정말 빠른 네이티브 라이브러리만 사용
+- 단점
+  - 디버깅 어려움
+  - 주의하지 않으면 속도가 오히려 떨어짐
+  - 메모리 오류
+  - 이식성 낮음
+
+
+
+### 67 최적화는 신중히 하라
+
+모든 사람이 마음 깊이 새겨야 할 최적화 격언 세 대를 소개한다.
+
+```
+맹목적인 어리석음을 포함해 그 어떤 핑계보다 효율성이라는 이름 아래 행해진 컴퓨팅 죄악이 더 많다 (심지어 효율을 높이지도 못하면서)
+
+- 윌리엄 울프(Wulf72)
+
+(전체의 97% 정도인) 자그마한 효율성은 모두 잊자. 섣부른 최적화가 만악의 근원이다. - 도널드 크누스(Knuth74)
+
+최적화를 할 때는 다음 두 규칙을 따르라.
+
+첫 번째, 하지마라.
+두 번째, (전문가 한정) 아직 하지 마라. 다시 말해, 완전히 명백하고 최적화되지 않은 해법을 찾을 때까지는 하지 마라.
+- M.A 잭슨 (Jackson75)
+```
+
+
+
+- 성능 때문에 견고한 구조를 희생하지 말자. 빠른 프로그램보다는 좋은 프로그램을 작성하라
+  - 좋은 프로그램은 정보 은닉 원칙을 따르므로 개별 구성요소의 내부를 독립적으로 설계할 수 있다.
+- 아키텍처의 결함이 성능을 제한하는 상황이라면 시스템 전체를 다시 작성하지 않고는 해결하기 불가능 할 수 있다. 완성된 틀을 변경하려다보면 유지보수하거나 개선하기 어려운 꼬인 구조의 시스템이 만들어지기 쉽다.
+- 성능문제는 설계 단계에서 반드시 염두해야함. 
+- 성능을 제한하는 설계를 피하라
+  - 완성 후 컴포넌트 끼리, 혹은 외부 시스템과의 소통 방식이 변경하기 어려움
+    - API, 네트워크 프로토콜, 영구 저장용 데이터 포맷 등이 대표적
+- API를 설계할 때 성능에 주는 영향을 고려하라
+  - public 타입을 가변으로 만들면 불필요한 방어적 복사를 수없이 유발할 수 있다.
+  - 컴포지션으로 해결할 수 있음에도 상속방식으로 설계한 public 클래스는 상위 클래스에 영원히 종속되면 그 성능 제약까지도 물려받게 된다.
+  - 인터페이스도 있는데 굳이 구현타입을 사용하는 것 역시 좋지 않다.
+  - 특정 구현체에 종속하게되어 더 좋은 구현체가 나오더라도 이용하지 못하게 된다.
+
+
+
+- 최적화를 꼭 할 경우 전후 성능을 측정하라
+- 프로파일링 도구는 최적화 노력을 어디에 집중해야 할지 찾는 데 도움을 준다.
+
+#### 핵심정리
+
+- 좋은프로그램을 작성하다보면 성능은 따라오게 마련
+- 하지만 성능요소가 포함된(API, 네트워크 프로토콜, 영구 저장용 데이터 포맷 등이 대표적) 시스템 설계할때 성능을 염두해야한다.
+- 구현을 완료하면 성능측정 충분히 빠르면 그걸로끝 아니면 프로파일링 도구로 원인지점 찾고 최적화
+- 알고리즘을 잘못 골랐다면 저 수준 최적화는 아무리 해봐야 소용이 없다.
+
+
+
+### 68 일반적으로 통용되는 명명 규칙을 따르라
+
+- 패키지는 도메인 이름 역순
+  - 표준 라이브러리는 java,javax로 시작
+- 패키지각 요소는 8글자 이하의 짦은 단어
+  - utilities 보단 util
+  - 여러단어로 구성된 이름이라면 awt처름 첫글자 사용
+- 클래스(열거, 애너테이션 포함), 인터페이스은 하나이상 단어고 각 단어는 대문자로 시작
+- 메소드, 필드 첫문자 소문자로 사용
+- 상수필드 모두 대문자 , _로 띄어쓰기 사용
+- 지역변수 약어 사용가능
+- 매개변수는 메서드 설명 문서에  까지 등장하는 만큼 일반 지역변수보다는 신경을 써야 한다.
+- 타입 매개변수
+  - 임의타입 T,
+  - 원소타입 E
+  - 맵 키 K , 값 V
+  - 예외 X
+  - 메서드 반환 타입 R
+  - 그외 임의 타입의 시퀀스에는 T,U,V  혹은 T1,T2,T3 사용
+- 객체를 생성할 수 있는 클래스의 이름은 보통 단수 명사, 명사구 사용
+- 객체를 생성할 수 없는 클래스는 복수 명사
+  - Collectors, Collections 등
+- 어떤 동작을 수행하는 메서드의 이름은 동사(목적어 포함), 동사구로 짓는다.
+  - append, drawImage
+- boolean 값을 반환 하면 보통 is, 드물게 has로 시작
+- 반환타입이 boolean이 아닌경우 get  + 동사구
+- 객체 타입이 변경되는 메서드 toType
+  - toString , toArray 등
+- 객체의 내용이 다른 뷰로 보여주는 메소드는 asType 사용
+  - asList 등
+- 기본타입 반환하는 메서드는 보통 typeValue로 지음
+  - intValue 등
+- 정적 팩터리는 다양하지만 아래 경우를 많이 사용
+  - from, of, valueOf, instance, getInstance, newInstance, getType,newType
+
+
+
+## 예외
+
+
+
+### 69 예외는 진짜 예외 상황에만 사용하라
+
+- 예외는 예외상황에만 사용, 제어 흐름용으로 사용하면 안됨
+- 잘 설계된 API라면 클라이언트가 정상적인 제어 흐름에서 예외를 사용할 일이 없게 해야 한다.
+  - 상태 의존적 메서드를 제공하는 클래스는 '상태검사' 메서드도 함께 제공해야함
+    - 예 Iterator의 next,와 hasNext
+  - 상태 검사 메서드 대신 사용하는 방법은 올바르지 않은 상태일때 null 혹은 빈 옵셔널을 반환하는 방법
+- 상태검사 메서드, 옵셔널, 특정 값 중 하나를 선택하는 지침
+  1. 외부 동기화 없이 여러 쓰레드가 동시에 접근할 수 있거나 외부 요인으로 상태가 변할 수 있는 경우는 옵셔널이나 특정값을 사용한다. 상태검사메서드와 상태의존적메서드 호출 사이에 객체의 상태가 변할 수 있기 때문에
+  2. 성능이 중요한 상황에서 상태검사 메서드가 상태의존적메서드의 작업 일부를 중복 수행 한다면 옵셔널이나 특정값을 선택한다.
+  3. 다른 모든 경우엔 상태검사 메서드 방식이 조금 더 낫다고 할 수 있다. 가독성 및 오류찾기 쉬움, 상태검사메서드 호출을 깜빡 잊었다면 상태 의존적 메서드가 예외를 던져 버그를 확실히 드러낼것
+
+### 70. 복구할 수 있는 상황에는 검사 예외를, 프로그래밍 오류에는 런타임 예외를 사용하라.
+
+복구 = 예외처리로 생각하자. 에러발생 할 경우 에러처리를 흐름 복구, 회복이라고 한다.
+
+- 호출하는 쪽에서 예외처리하리라 여겨지는 상황이라면 checked exception을 사용
+  - checked exception과 unchecked exception을 구분하는 기본 규칙 
+  - checked exception는 호출자가 그 예외를 catch나 throws처리하는것을 강제함(컴파일 에러) , 따라서 그 메서드를 호출 했을때 발생할 수 있는 유력한 결과임을 API 사용자에게 알려주는것이다. 달리말하면 API 사용자가 그 상황에서 회복해내라고 요구하는 것
+    - IOException , SQLException 등
+  - unchecked exception은 error와 runtime exception이 있다. 이 둘은 동작측면에서 다르지 않고, **이 둘은 프로그램에서 잡을 필요가 없거나 혹은 통상적으로 는 잡지 말아야한다.** 이 둘의 에러가 발생했다는건 복구가 불가능하거나 더 실행해봐야 득보다는 실이 많다는 뜻이다.
+- 프로그래밍 오류를 나타낼 때는 런타임 예외를 사용하자.
+  - 런타임예외 대부분은 전제조건을 만족하지 못할 때 발생
+  - 전제조건위배란, 클라이언트가 해당 API의 명세에 기록된 제약을 지키지 못했다는 뜻
+  - 예로 배열 인덱스는 0~n-1 ( n은 배열크기 )사이여야한다. 아니면 ArrayIndexOutOfBoundsException 발생
+  - 이상의 조건에서 문제가 하나 있다면 , `복구할 수 있는 상황`인지 `프로그래밍오류`인지가 명확히 구분이 안됨
+    - 예로 말도안되는 크기의 배열을 할당해 자원고갈이 발생한건지, 진짜 자원이 부족해서 발생한문제인지 모름
+    - API 설계자 판단으로 복구가능하면 Checked , 불가능하면 Runtime을 사용하자
+    - **어떤문제인지  확신이 어렵다면 Runtime Exception이 좋다.**
+- 에러는 보통 JVM의 자원부족, 불변식깨짐 등 더 이상 수행을 계속할 수 없는 상황
+  - Error 클래스를 상속해 하위 클래스 만드는 일은 자제
+  - **즉 우리가 구현하는 Unchecked Throwable은 모두 RuntimeException 하위 클래스 여야한다. **
+  - AssertionError 이외에 Error를 throw 문으로 직접 던지는 일도 없어야 한다.
+- Exception , RuntimeException, Error 를 상속하지 않는 Throwable을 만들 수 있지만 이로울게 없으니 절대로 사용하지 말자.ㅔ
+
+
+
+- **예외처리할때 복구가 가능하면 Checked Exception, 복구 불가능이면 Runtime Exception을 사용하자 ** 
+
+
+
+### 71 필요 없는 검사 예외 사용은 피하라
+
+- Checked Exception 은 잘 사용하면 프로그램 질이 높아짐
+  
+  - 프로그래머가 처리하여 안전성을 높임
+  
+- Checked Exception을 과하게 사용하면 오히려 쓰기 불편한 API가 된다.
+
+- **Checked Exception을 사용하는 메서드는 스트림안에서 `직접` 사용할 수 없기 때문에 자바 8부터 부담이 커짐**
+
+- Checked Exception 사용지침
+
+  - API를 재대로 사용해도 발생할 수 있는 에러
+
+  - 프로그래머가 의미 있는 조치를 취할 수 있는 경우
+
+  - ```
+    } catch(TheCheckedException e){
+    	e.printStackTrace(); // 
+    	System.exit(1);
+    }
+    
+    } catch(TheCheckedException e){
+    	throw new AssertionError(); //일어날 수 없다.
+    }
+    ```
+
+  - 위와 같은 상황 아니라면 Runtime Exception으로 설계
+
+- 리펙토링 두 가지 방법
+
+  - **Checked Exception을 피하는 가장 쉬운 방법은 적절한 결과 타입을 담은 옵셔널을 반환하는 것이다.**
+
+    - 이 방식의 단점은 예외 발생한 이유를 담을 수 없다.
+
+  - Checked Exception 메소드를 두개로 나눠 Runtime Exception 으로 변경
+
+    - 이 방식은 여러 쓰레드에서 상태를 변경할때 위험한 방법
+
+    - ```
+      //리펙토링 전, action은 checked exception 발생
+      try {
+      	obj.action(args);
+      }catch(TheCheckedException e){
+      	...// 예외 상황에 대처한다.
+      }
+      
+      // 리펙토링 후
+      
+      if(obj.actionPermitted(args)){
+      	obj.action(args);
+      }else{
+         ...//예외상황 대처
+      }
+      
+      // 쓰레드가 중단되길 원하면 한줄로 끝
+      obj.action(args);
+      
+      ```
+
+      
+
+### 72 표준 예외를 사용하라
+
+- Java library는 대부분 API에서 쓰기에 충분한 수의 예외를 제공한다.
+- 표준 예외
+  - IllegalArgumenetException
+    - 호출자가 파라메터를 부적절한 값을 넘길때 발생
+    - 예 : 반복횟수에 음수를 건넴
+    - 가장 많이 재사용되는 예외
+  - IllegalStateException 
+    - 객체(this)의 상태가 호출된 메서드를 수행하기에 적합하지 않음
+    - 예 : 초기화되지 않은 객체
+  - NullPointerException
+    - Null값을 허용하지 않는 메소드에서 null을 보내면 IllegalArgumentException대신 NullPointerException을 던짐
+  - IndexOutOfBoundsException
+    - 어떤 시퀀스의 허용 범위를 넘는 값을 건넬 때도 IllegalArgumentException 보단 IndexOutOfBoundsException 던짐
+  - ConcurrentModificationException
+    - 단일쓰레드 사용할려고 설계한 객체를 여러쓰레드가 동시에 수정하려고할때 발생
+  - UnsupportedOperationException
+    - 클라이언트가 요청한 동작을 대상 객체가 지원하지 않을 때 던짐
+    - 예 : List 구현체 중 추가만 하는 구현체가 있을 경우, remove 사용하면 해당 에러 발생
+- **Exception,RuntimeException,Throwable,Error는 직접 재사용하지말자, 이들은 추상클래스라고 생각하자.**
+- IllegalArgumenetException , IllegalStateException  규칙
+  - 위 두 예외를 선택하기 힘들때가 있다. 예로 카드 덱을 리스트로 가지고 있고 덱에서 주어진 파라메터만큼 뽑는 메서드를 제공할때, 덱의 수보다 더 많은 값을 요구하면 어떤에러를 발생시킬지 고민이다.
+    - 메서드를 수행못하는 원인이 this 상태에 있는건지, 파라메터가 잘못된건지 모를때 
+  - **파라메터가 값이 무엇이든 어차피 실패했을 거라면 IllegalStateException  , 그렇지 않으면 IllegalArgumenetException  사용한다.**
+
+### 73 추상화 수준에 맞는 예외를 던지라
+
+- 메서드가 고수준 처리할때 저수준 예외를 처리하지않고 바깥으로 전파해버리면 고수준 메서드를 다루는데 저수준 예외처리를 해야한다.
+
+- 이 문제를 피하려면 **상위 계층에서는 저수준 예외를 잡아 자신의 추상화 수준에 맞는 예외롤 바꿔 던져야한다. 이를 예외 번역(Exception Translation)이라 한다.**
+
+- ```
+  try{
+  
+  }catch (LowerLevelException e){
+  	throw new HigherLevelException(...);
+  }
+  ```
+
+- **예외를 번역할때 저수준 예외가 디버깅에 도움이 된다면 예외연쇄(exception chaning)을 사용하는 게 좋다.**
+
+  - ```
+    }catch (LowerLevelException e){
+    	throw new HigherLevelException(e);
+    }
+    ```
+
+- 무턱대고 예외를 전파하는 것보다야 예외 번역이 우수한 방법이지만 그렇다고 남용해서는 안된다.
+
+  - 저수준 메서드가 반드시 성공하도록 하여 아래계층에서는 예외가 발생하지 않도록 하는것이 최선-
+  - 또는 상위 계층 메서드에서 매개변수 값을 아래계층에 넘기기전에 미리 검사하는 방법으로 이 목적을 달성 할 수 있다.
+
+### 74 메서드가 던지는 모든 예외를 문서화하라
+
+- 검사 예외는 항상 따로따로 선언하고, 각 예외가 발생하는 상황을 자바독 @throws 태그를 사용하여 정확히 문서화하자.
+  - **공통 상위 클래스 ,즉 Exception나 Throwable을 던진다고 선언해서는 안 된다.**
+  - Unchecked Exception이나 CheckedException 모두 @throws 태그에 문서화한다.
+  - Unchecked Exception은 메서드의 throws 목록에 넣지 말자. 그래야 @throws 태그에 있고 throws에 없으면 Unchecked Exception, 둘 다 있으면 Checked Exception 인지 알 수 있다.
+
+- 모든 메서드에서 공통되게 던지는 예외가 있다면 class 설명에 추가하는 방법도 있다.
+
+ 
+
+### 75 예외의 상세 메시지에 실패 관련 정보를 담으라
+
+- 예외를 잡지못할경우 예외객체의 toString 값을 표현하는것이 stack trace 이다.
+
+- 예외의 toString값에 실패 원인에 관한 정보를 가능한 한 많이 담아 반환하는 일은 아주 중요하다,!!!!!!
+
+- **실패 순간 포착하려면 발생한 예외에 관여된 모든 매개변수와 필드의 값을 실패 메시지에 담아야 한다.**
+
+  - IndexOutOfBoundsException 의 경우 범위의 최대, 최소, 입력된 인덱스값을 모두 담아야한다.
+
+  - 다음처럼 구현하는게 좋았을것이다.
+
+  - ```
+        	/**
+             * IndexOutOfBoundsException을 생성한다
+             * @param lowerBound 인덱스의 최솟값
+             * @param upperBound 인덱스의 최댓값 + 1
+             * @param index 인덱스의 실젯값
+             */
+          public IndexOutOfBoundsException(int lowerBound, int upperBound, int index)
+          	{
+               // 실패를 포착하는 상세 메시지를 생성한다.
+               super(String.format("최솟값: %d , 최댓값: %d, 인덱스: %d", lowerBound, upperBound, index));
+               
+               // 프로그램에서 이용할 수 있도록 실패 정보를 저장해둔다.
+               this.lowerBound = lowerBound;
+               this.upperBound = upperBound;
+               this.index = index;
+        	}
+    ```
+
+- 예외 메세지는 장황할 필요가 없다. 최종 사용자에게 보여지는 메세지가아니라 개발자가 소스코드를 보면서 확인하는 것이라 가독성이 좋게 보여주기만 하면된다.
+
+### 76 가능한 한 실패 원자적으로 만들라
+
+- **호출된 메서드가 실패하더라도 해당 객체는 메서드 호출 전 상태를 유지해야 한다. 이러한 특성을 실패 원자적 이라고 한다.**
+- 실패원자적 만드는 방법
+  - 불변 객체로 설계
+  - 가변 객체일때는 작업 수행전 파라메터 유효성 검사하는 방법
+  - 객체의 임시 복사본에서 작업한다음 성공하면 원래객체와 교체하는 방법
+    - 리스트를 배열로 교체하여 작업한다음 리스트로 덮어씌움 , 성능까지 좋음
+  - 작업도중 발생하는 실패를 가로채는 복구코드를 작성하여 작업 전 상태로 되돌리는 방법
+    - 주로 디스크 기반의 내구성을 보장해야하는 자료구조에서 쓰임
+- 실패원자성을 만드는데 비용이 클 경우 안할 수도 있지만 최대한 하는게 좋다.
+
+### 77 예외를 무시하지 말라
+
+- try-catch로 잡고 아무것도 안하는짓은 하지말자.
+
+- catch 블록을 비워두면 예외가 존재할 이유가 없다.
+
+- 예외를 무시해도 될때가 있다. 
+
+  - FileInputStream을 닫을때  파일의 상태를 변경하지 않았으니 복구할 것이 없으며, 닫는다는건 필요한 정보를 다 읽었다는 뜻이니 남은 작업을 중단할 이유도 없다.
+
+  - 어쨌든 예외를 무시하기로 했다면 catch문안에 로그를 남기고 예외 변수를 ignored로한다.
+
+    - ```
+      catch(XXXException ignored){
+      	//log
+      }
+      ```
+
+- 오류를 무시하지않고 바깥으로 전파만되게 남겨도 디버깅을 할 수있다.
+
+
+
+## 동시성
+
+몇 가지 동시성에 필요한 지식 추가
+
+#### CPU 캐시와 메모리 
+
+[참조](https://parkcheolu.tistory.com/14)
+
+보통, CPU가 메인 메모리로의 접근을 필요로 할 때, CPU는 메인 메모리의 일부분을 CPU 캐시로 읽어들일다(RAM -> Cache). 그리고 이 캐시의 일부분을 자신의 내부 레지스터로 다시 읽어들이고(Cache -> CPU Registers), 이 읽어들인 데이터로 명령을 수행한다. 후에 이 데이터를 다시 메인 메모리에 저장(writing)하기 위해서는 데이터를 읽어들일 때의 과정을 역순으로 밟는다. 작업 결과를 레지스터에서 캐시로 보내고, 적절한 시점에 캐시에서 메인 메모리로 보낸다.
+
+캐시가 데이터를 메인 메모리로 보내는 적절한 시점이란, CPU가 캐시 메모리에 다른 데이터를 저장해야 할 때이다. CPU 캐시는 자신의 메모리에 데이터를 한 번 저장할 때(at a time), 메모리의 일부에 데이터를 저장해둘 수 있고, 또 일부분만을 보내는(flush) 일도 가능하다. 즉 캐시가 데이터를 읽거나 쓸 때, 반드시 한번에 캐시 메모리의 모든 데이터를 처리하지 않아도 된다는 말이다. 보통 캐시는 '캐시 라인(cache lines)' 이라고 불리는 작은 메모리 블록에 데이터를 갱신한다. 캐시 메모리에는 한 줄 이상의 캐시 라인을 읽어들일 수 있고, 반대로 한 줄 이상의 캐시 라인을 메인 메모리로 보낼(저장할) 수도 있다.
+
+
+
+- **내가 잘못 알고 있던 부분이 항상 메모리에 저장될 것이라고 생각했음**
+
+  - 예로
+
+    ```
+    Thread main 
+    	i = 0;
+    	Thread A & B start
+    Thread A
+    	while(1초마다)
+    		i++;
+    Thread B 
+    	while(1초마다)
+    		System.out.print(i);
+    ```
+
+    A 스레드가 i++할때 메인메소드에 저장하지 않고 CPU 캐시에서 처리중일때 B 스레드는 계속 0을 읽을 수 있다. 즉non-volatile일 경우 최신값에 대해서 보장을 못함
+
+### 78 공유 중인 가변 데이터는 동기화해 사용하라.
+
+- 동기화(synchronized)는 배타적 실행뿐만 아니라 스레드 사이의 안정적인 통신에 꼭 필요하다.
+
+- Thread.stop 메서드는 완전하지 않아 사용하지말자 .!
+
+  - 아래와 같이 코딩하면 백그라운드 스레드가 메인스레드가 변수를 변경한 것을 언제 보게될지 보장할 수없다.
+
+  - ```
+    아래와 같이 코딩하면 1초 후에 끝날 것이라고 판단하지만 JVM 최적화로 영원히 안끝날수있다.
+    public class StopThread {
+        private static boolean stopRequested;
+        public static void main(String[] args) throws InterruptedException {
+            Thread backgroundThread = new Thread(() -> {
+                int i = 0;
+                while(!stopRequested) {
+                    i++;
+                }
+            });
+            backgroundThread.start();
+            TimeUnit.SECONDS.sleep(1);
+            stopRequested = true;
+        }
+    }
+    //JVM 이 최적화하여 다음과 같이 변할 수 있다. 그러면 끝나지 않음
+    new Thread(()->{
+    	int i=0;
+    	if(!stopRequested){
+    		while(true)
+    			i++;
+    	}
+    })
+    ```
+
+  - 다음과 같이 공유자원을 동기화해 접근하면 이 문제를 해결할  수 있다.
+
+  - ```
+    public class StopThread {
+        private static boolean stopRequested;
+        private static synchronized void requestStop() {
+            stopRequested = true;
+        }
+       
+        private static synchronized boolean stopRequested() {
+            return stopRequested;
+        }
+        public static void main(String[] args) throws InterruptedException {
+            Thread backgroundThread = new Thread(() -> {
+                int i = 0;
+                while(!stopRequested()) {
+                    i++;
+                }
+            });
+            backgroundThread.start();
+            TimeUnit.SECONDS.sleep(1);
+            stopRequested();
+        }
+    }
+    ```
+
+  - **쓰기 읽기 모두 동기화 하지 않으면 동작을 보장하지 않는다.**
+
+  - 반복문에서 매번 동기화하는 비용이 클경우 대안으로 volatile으로 선언
+
+    - volatile은 배타적 수행과는 상관없고 항상 최근에 기록된 값을 읽게 됨을 보장
+
+  - ```
+    public class StopThread {
+    
+        private static volatile boolean stopRequested;
+    
+        public static void main(String[] args) throws InterruptedException {
+    
+            Thread backgroundThread = new Thread(() -> {
+                int i = 0;
+                while(!stopRequested) {
+                    i++;
+                }
+            });
+    
+            backgroundThread.start();
+    
+            TimeUnit.SECONDS.sleep(1);
+            stopRequested = true;
+        }
+    }
+    ```
+
+- 가변데이터는 공유하지말고 불변데이터만 공유하자 ,즉 가변데이터는 단일 스레드 에서만 사용하자.
+
+  - 가변데이터를 공유할 경우 synchronized 사용하자
+
+​	
+
+#### 개인 정리
+
+- volatile 변수는 변수의 write가 원자성을 보장한 상태에서 변수의 최신 데이터 read를 보장한다. 이를 가시성(visibility) 보장한다고한다. 즉 다시말해서 한 쓰래드에서 volatile 변수의 값을 읽고 쓰고, 다른 쓰래드에서는 오직 변수 값을 읽기만 할 경우, 그러면 읽는 쓰래드에서는 volatile 변수의 가장 최근에 쓰여진 값을 보는 것을 보장할 수 있습니다.
+- volatile은  write의 병행제어는 보장하지 않는다.
+- write & read를 보장하는것이 synchronized 이다.
+- CPU 캐시와 메모리에 대해서 잘 모르고 있었기에 아래 정리함
+
+
+
+### 79 과도한 동기화는 피해라
+
+- 관련된 코드가 많은 파트로 직접보는것을 권함
+
+- **synchronized 블록 안의 메소드를 클라이언트에 양도하면 안된다.**
+
+  - ```
+    API 구성
+    method A(parameter a){
+    	synchronized {
+            a.method B 실행
+        }
+    }
+    
+    클라이언트가 method B를 구현
+    ```
+
+  - 위와 같이 method A 내부 synchronized 블록에서 a의 method B를 실행하면 이 부분은 클라이언트에게 제어를 양도한 것이다.
+
+  - synchronized 블록을 만들때는 제어 양도를 하면 안된다.!
+
+  - 잘못할 경우 교착상태빠지거나 데이터가 회손될 수 있다.
+
+- CopyOnWriteArrayList는 수정은 드물고 순회만 빈번히 일어나는 관찰자 리스트 용도로 좋다.
+
+- **기본 규칙은 동기화 블록은 가능한 한 일을 적게 하는 것이다.**
+
+- StringBuffer 동기화 버전, StringBuilder non 동기화
+
+- Random 동기화 , ThreadLocalRandom non 동기화
+
+- 사실 동기화 프로그래밍을 당장 많이 다루지는 않을 것 같아서 간단하게 요약함, 자세한건 병행제어 책을 읽자.
+
+### 80 스레드보다는 실행자(Executor), 테스크(Task), 스트림을 애용하라.
+
+#### Executor에 관한 설명이 우선
+
+- 참고 
+  - https://javacan.tistory.com/entry/134
+    - Executor에 대해서 잘 설명이 되있다.
+    - 대부분 복사해옴
+
+- new Thread 보다 Executor를 쓰는 이유
+
+  - ```
+    while(true) {
+        request = acceptRequest();
+        Runnable requestHandler = new RequestHandler(request);
+        new Thread(requestHandler).start();
+    }
+    ```
+
+  - 위 코드가 논리적으로 문제점은 없지만, 다음과 같은 성능상의 문제점을 안고 있다.
+
+    - 소규모의 많은 요청이 들어올 경우 쓰레드 생성 및 종료에 따른 오버헤드가 발생한다.
+    - 생성되는 쓰레드 개수에 제한이 없기 때문에 OutOfMemoryError가 발생할 수 있다.
+    - 많은 수의 쓰레드가 실행될 경우, 쓰레드 스케줄링에 따른 오버헤드가 발생한다.
+
+- 관련 클래스 구조
+
+  - ![img](https://t1.daumcdn.net/tistoryfile/fs15/32_tistory_2008_12_09_05_48_493d8816427ce?x-content-disposition=inline)
+
+  - Executor 인터페이스:
+    제공된 작업(**Runnable 구현체**)을 실행하는 객체가 구현해야 할 인터페이스. 이 인터페이스는 작업을 제공하는 코드와 작업을 실행하는 메커니즘의 사이의 커플링을 제거해준다.
+
+  - ExecutorService 인터페이스:
+    Executor의 **라이프사이클을 관리할 수 있는 기능**을 정의하고 있다. Runnable 뿐만 아니라 **Callable**을 작업으로 사용할 수 있는 메소드가 추가로 제공된다.
+
+    - Executor의 라이프 사이클을 관리
+
+      - void shutdown():
+        셧다운 한다. 이미 Executor에 제공된 작업은 실행되지만, 새로운 작업은 수용하지 않는다.
+      - List<Runnable> shutdownNow():
+        현재 실행중인 모든 작업을 중지시키고, 대기중인 작업을 멈추고, 현재 실행되기 위해 대기중인 작업 목록을 리턴한다.
+      - boolean isShutdown():
+        Executor가 셧다운 되었는 지의 여부를 확인한다.
+      - boolean isTerminated():
+        셧다운 실행 후 모든 작업이 종료되었는 지의 여부를 확인한다.
+      - boolean awaitTermination(long timeout, TimeUnit unit):
+        셧다운을 실행한 뒤, 지정한 시간 동안 모든 작업이 종료될 때 까지 대기한다. 지정한 시간 이내에서 실행중인 모든 작업이 종료되면 true를 리턴하고, 여전히 실행중인 작업이 남아 있다면 false를 리턴한다.
+
+    - Callable을 작업으로 사용하기 위한 메소드
+
+      - ```
+        // Callable 구현
+        public class CallableImpl implements Callable<Integer> {
+            public Integer call() throws Exception {
+                // 작업 처리
+                return result;
+            }
+        }
+        
+        ExecutorService executor = Executors.newFixedThreadPool(THREADCOUNT);
+        …
+        //submit으로 실행
+        Future<Integer> future = executor.submit(new CallableImpl());
+        Integer result = future.get();
+        ```
+
+      -  Future.get() 메소드는 Callable.call() 메소드의 실행이 완료될 때 까지 블록킹
+
+    - ThreadPoolExecutor는 ExecutorService의 하위 클래스
+
+      - Executors에 없는 Executor를 사용할려면 직접 ThreadPoolExecutor을 생성해도된다. 
+      - 생성자 옵션
+        - corePoolSize : 풀 사이즈를 의미한다. 최초 생성되는 스레드 사이즈이며 해당 사이즈로 스레드가 유지된다. 해당 Job의 맞게 적절히 선택해야 한다. 많다고 성능이 잘나오는 것도 아니고 적다고 안나오는 것도 아니다. 충분히 테스트하면서 적절한 개수를 선택해야 한다.
+        - maximumPoolSize : 해당 풀에 최대로 유지할 수 있는 개수를 의미한다. 이 역시 Job에 맞게 적절히 선택해야 한다.
+        - keepAliveTime : corePoolSize보다 스레드가 많아졌을 경우 maximumPoolSize까지 스레드가 생성이 되는데 keepAliveTime 시간만큼 유지했다가 다시 corePoolSize 로 유지되는 시간을 의미한다. (그렇다고 무조건 maximumPoolSize까지 생성되는 건 아니다.)
+        - unit : keepAliveTime 의 시간 단위를 의미한다.
+        - workQueue : corePoolSize보다 스레드가 많아졌을 경우, 남는 스레드가 없을 경우 해당 큐에 담는다.
+
+    - Spring을 사용한다면 `ThreadPoolTaskExecutor`를 살펴보는 것도 좋다. 내부 구현은 `ThreadPoolExecutor`로 구현되어 있다. ThreadPoolExecutor 보다 조금 더 간편하며, 추가적인 return 타입도 있다.
+
+      ```
+      @Bean
+      public Executor threadPoolTaskExecutor() {
+          ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+          executor.setCorePoolSize(10);
+          executor.setQueueCapacity(100);
+          executor.setMaxPoolSize(30);
+          executor.set...
+          return executor;
+      }
+      ```
+
+  - ScheduledExecutorService:
+    지정한 **스케쥴**에 따라 작업을 수행할 수 있는 기능이 추가되었다.
+
+  - Executors 유틸리티 클래스
+
+    - ExecutorService newFixedThreadPool(int nThreads)
+      최대 지정한 개수 만큼의 쓰레드를 가질 수 있는 쓰레드 풀을 생성한다. 실제 생성되는 객체는 ThreadPoolExecutor 객체이다.
+    - ScheduledExecutorService newScheduledThreadPool(int corePoolSize)
+      지정한 개수만큼 쓰레드가 유지되는 스케줄 가능한 쓰레드 풀을 생성한다. 실제 생성되는 객체는 ScheduledThreadPoolExecutor 객체이다.
+    - ExecutorService newSingleThreadExecutor()
+      하나의 쓰레드만 사용하는 ExecutorService를 생성한다.
+    - ScheduledExecutorService newSingleThreadScheduledExecutor()
+      하나의 쓰레드만 사용하는 ScheduledExecutorService를 생성한다.
+    - ExecutorService newCachedThreadPool()
+      필요할 때 마다 쓰레드를 생성하는 쓰레드 풀을 생성한다. 이미 생성된 쓰레드의 경우 재사용된다. 실제 생성되는 객체는 ThreadPoolExecutor 객체이다.
+
+- 사용 방법
+
+  - ```
+    //상황에 알맞는 ExecutorService 생성
+    ExecutorService exec = Executors.newSingleThreadExecutor();
+    
+    //runnable 실행
+    exec.execute(() -> {
+    	    System.out.println(Thread.currentThread());
+    	});
+    	
+    //callable 실행
+    Future<String> fut = exec.submit(() -> Thread.currentThread().toString());
+    
+    //Executor 종료
+    exec.shutdown();
+    ```
+
+- 작은 프로그램이나 가벼운 서버라면 newCashedThreadPool이 일반적으로 좋은 선택
+
+  - CashedThreadPool은 요청받은 태스크들이 큐에 쌓이지 않고 즉시 스레드에 위임돼 실행된다. 가용된 스레드가 없다면 하나 생성한다 , 서버가 무겁다면 CPU 이용률이 100%까지 올라간다.
+
+- 무거운 서버라면 newFixedThreadPool이나 완전히 통제 가능한 ThreadPoolExecutor를 직접 사용한다.
+
+- 자바 7부터 fork-join태스크를 지원, ForkJoinTask는 ForkJoinPool이라는 특별한 ExecutorService를 실행해주고 ForkJoinTask의 인스턴스는 작은 하위 태스크로 나뉠 수 있고 ForkJoinPool을 구성하는 스레드들이 이 태스크들을 처리하며, 일을 먼저 끝낸 스레드는 다른 스레드의 남은 태스크를 가져와 대신 처리할 수도 있다.
+
+  - 스트림의 병행제어가 이 태스크를 사용한다. 따라서 포크조인태스크에 적당한 스트림은 빠르게 처리되지만 포크조인에 적절하지않은 태스크는 오히려 오래걸릴 수 있다.
+
+  
+
+
+
+
+
+### 81 wait와 notify보다는 동시성 유틸리티를 애용하라
+
+- wait이나 notify는 사용하기 어려우니 고수준 동시성 유틸리티를 사용하자.
+- java.util.concurrent 고수준 유틸리티는 세 가지 범주로 나뉨
+  - Executor  : 80 챕터에서 설명
+  - Concurrent Collection : 아래다룸
+  - Synchronizer : 아래다룸
+
+#### Concurrent Collection
+
+- Concurrent Collection은 List,Queue,Map 같은 표준 컬렉션을 Concurent를 가미해 구현한 고성능 컬렉션이다. 높은 동시성을 도달하기 위해 각자의 내부에서 동기화를 수행
+- Concurrent Collection에서 Concurrent를 무력화 하는 것은 불가능하며, 외부에서 락을 추가로 사용하면 오히려 속도가 느려짐.
+- **Concurrent 컬렉션은 동기화한 컬렉션을 낡은 유산으로 만들었음, Collections.synchronizedMap 보단 ConcurrentHashMap사용하는것이 훨씬 좋다.**
+- Queue를 확장한 BlockingQueue 는 take라는 메서드가있는데 이 메서드는 첫번째원소를 가져오지만 큐가 비었다면 새로운 원소가 올때까지 blocking 상태로 있는다.
+  - 하나 이상의 producer 스레드가 큐에 put 하고, 하나 이상의 consumer가 큐에 있는 작업을 꺼내 처리하는 형태
+  - ThreadPoolExecutor를 포함한 대부분 ExecutorService에서 사용한다.
+
+
+
+#### Synchronizer
+
+- 동기화 장치는 스레드가 다른 스레드를 기다릴 수 있게 하여 서로 작업을 조율할 수 있게 해줌
+- 
