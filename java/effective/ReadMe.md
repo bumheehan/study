@@ -1,11 +1,11 @@
-# `Effective Java
+# Effective Java
 
 효율적으로 자바 코딩
 간단하게 정리 => 이해 못하는 내용 다음 회차에서 확인
 
 ## 객체 생성과 파괴
 
-### 1. 생성자 대신 정적 팩터리 메서드 고려
+### 1. 생성자 대신 정적 팩터리 메서드 고려 ★
 
 - 생성자보다 메서드 이름으로 객체 타입 유추 가능
 
@@ -14,7 +14,7 @@ new BigInteger(int,int,Random)
 BigInteger.probablePrime(bitLength, rnd)
 ```
 
-- 호출 될때마다 새로운 인스턴스 생성 안해도됨
+- **호출 될때마다 새로운 인스턴스 생성 안해도됨**
   - 불변 클래스는 호출 될 때마다 생성한 인스턴스 캐싱하여 재활용
 
 ```java
@@ -33,7 +33,7 @@ public static Boolean.valueOf(boolean b){
 
 - 매개 변수에 따라 다른 클래스의 객체를 반환 가능
 
-  - 매개변수가에 따라서 성능상 좋은 구현체 생성  가능
+  - 매개변수에 따라서 성능상 좋은 구현체 생성  가능
 
 - 상황에 따른 메소드 이름
 
@@ -82,7 +82,7 @@ public static Boolean.valueOf(boolean b){
   - type: getType와 new Type의 간결한 버전
 
     ```
-    List<Complaint> litany =Collections.list(legacyLitany);
+    List<Complaint> litany = Collections.list(legacyLitany);
     ```
 
     
@@ -145,7 +145,8 @@ public class SpellChecker{
 }
 ```
 
-
+- 사용하는 자원에 따라 동작이 달라지는 클래스에는 정적 유틸리티 클래스, 싱글턴 방식은 올바르지 않다.
+  - 전략 디자인 패턴 같이 외부 클래스 의존할때를 말함
 
 #### 핵심 정리
 
@@ -153,7 +154,7 @@ public class SpellChecker{
 
 
 
-### 6. 불필요한 객체 생성을 피하라 ★
+### 6. 불필요한 객체 생성을 피하라  ★
 
 불변객체는 언제든 재사용 할 수 있다.
 
@@ -198,13 +199,11 @@ String 은 불변객체로 "" 로 만들어진 String은 같은 가상머신 안
 
 
 
-- `가벼운 객체`를 재사용하기 위해 나만의 객체풀을 만들지 말자. -> 요즘 GC가 잘 최적화 되어있어서 직접 객체 풀을 만든것보다 훨씬 빠름 
+- **`가벼운 객체`를 재사용하기 위해 나만의 객체풀을 만들지 말자. -> 요즘 GC가 잘 최적화 되어있어서 직접 객체 풀을 만든것보다 훨씬 빠름 **
   - `무거운 객체`는 객체풀 만드는게 나을때가 있다. 
     - DB는 커넥션에 대한 생산비용이 높아 커넥션 풀을 사용
 
 - 불필요한 객체생성은 성능만 영향주지만 , 잘못된 재사용은 버그를 생성한다.
-
-
 
 ### 7. 다 쓴 객체 참조를 해제하라
 
@@ -227,8 +226,6 @@ String 은 불변객체로 "" 로 만들어진 String은 같은 가상머신 안
   - finalizer 와 같은 기능이고 사용방법이 다름
   - 사용방법은 인터넷 확인
 
-
-
 - 특정 상황아니면 사용금지
   - 해당 메소드를 실행한다고 바로 삭제되는것을 보장하지않음
   -  finalizer는 성능이슈가 이씅ㅁ
@@ -236,7 +233,7 @@ String 은 불변객체로 "" 로 만들어진 String은 같은 가상머신 안
   - JNI
   - off-Heap 메모리 사용시
 
-### 9. try-finally 보다는 try-with-resources를 사용하라
+### 9. try-finally 보다는 try-with-resources를 사용하라 ★
 
 - AutoCloseable 을 구현한 클래스만 사용가능
 
@@ -346,7 +343,7 @@ IDE에서 자동으로 만들어줌
 
 
 
-### 13 toString을 항상 재정의하라
+### 13 toString을 항상 재정의하라 ★
 
 - toString 규약 : 모든 하위 클래스에서 이 메서드를 재정의하라
 
@@ -376,7 +373,7 @@ IDE에서 자동으로 만들어줌
 
 - Array복사 빼고는 clone쓰지말자, 직접 내부객체 복사기능 구현하는게 더 안전한것으로 판단됨
 
-### 15 Comparable 구현할지 고려하라
+### 15 Comparable 구현할지 고려하라 ★
 
 Comparable 규약
 
@@ -434,15 +431,12 @@ Comparable 규약
     public static final List<Thing> VALUES= Collections.unmodifiableList(Arrays.asList())
     ```
 
-  - 
-
-
 
 ### 16 Public 클래스에서는 Public 필드가 아닌 접근자 메서드를 사용하라
 
-- public 클래스는 절대 가변 필드를 노출 해서는 안됨! , 불변 필드는 덜 위험하지만 좋지는 않음
+- **public 클래스는 절대 가변 필드를 노출 해서는 안됨! , 불변 필드도 덜 위험은 하지만 좋지는 않음**
 
-### 17 변경 가능성을 최소화 하라
+### 17 변경 가능성을 최소화 하라 ★
 
 #### 불변 클래스 
 
@@ -484,7 +478,7 @@ Comparable 규약
 
 
 
-### 18 상속보다는 컴포지션을 사용 !!!!
+### 18 상속보다는 컴포지션을 사용 ★
 
 ##### 상속
 
@@ -557,7 +551,7 @@ class SubClass extends InheritTest {
 
 위 코드와 같이 상속으로 코드를 구성하게되면 super 클래스에서 sub 클래스의 override된 메소드를 사용할 수 있어서 재대로 사용하지 않을 경우 위험함
 
-- 내가 상위 하위 클래스를 모두 개발한 개발자라면 문제가 없지만 다른 패키지를 상속할 경우 해당 패키지에서 클래스 수정을 하면 내 시스템에 문제가 발생할 수 있다. 따라서 다른 패키지는 되도록 상속 하지 말고 사용하고 싶을 경우 컴포지션을 사용하자.
+- 내가 상위 하위 클래스를 모두 개발한 개발자라면 문제가 없지만 다른 패키지를 상속할 경우 해당 패키지에서 클래스 수정을 하면 내 시스템에 문제가 발생할 수 있다. 따라서 **다른 패키지는 되도록 상속 하지 말고 사용하고 싶을 경우 컴포지션을 사용하자.**
 
 
 
@@ -740,7 +734,7 @@ API 문서 끝 `Implementation Requirements` 로 시작 하는 절 : 메서드 �
 - 상속시 문서화 
 - 상속할 클래스만 상속으로사용, 상속용으로만들지 않은 클래스는 상속하지 말것!
 
-### 20  추상 클래스 보다는 인터페이스를 우선하라
+### 20  추상 클래스 보다는 인터페이스를 우선하라 
 
 다중 인터페이스 extends 로 받아 새로운 인터페이스 생성 가능
 
@@ -785,25 +779,18 @@ public interface SingerSongwriter extends Singer,Songwriter{
 
 ### 결론
 
-- 일반적 다중 구현용 타입으로는 인터페이스가 가장 적합  ,
-  - 뭔말이지
+- 일반적 다중 구현용 타입으로는 인터페이스가 가장 적합
 - 복잡한 인터페이스라면 구현하는 수고를 덜어주는 골격 구현을 함께 제공 하는 방법이 좋다.
 - 가능한 한 디폴트 메서드로 제공하여 그 인터페이스를 구현한 모든 곳에서 활용하도록 하는것이 좋다.
 - 구현상의 제약으로 어려우면 골격 구현 추상 클래스로 제공하자.
 
-
-
 ### 21 인터페이스는 구현하는 쪽을 생각해 설계하라
-
-
 
 - 기존에는 인터페이스에 메서드를 추가하면 구현체가 에러발생했다.(구현을 안했기때문에) 자바 8부터 디폴트 메서드가 나와서 인터페이스에 디폴트메서드를 추가 하더라도 구현체에 컴파일에러가 발생하지 않는다.
 - 디폴트 메서드가 새롭게 인터페이스를 만드는데 유용하지만 기존 시스템에 추가하는 것은 꼭 필요한 경우가 아니라면 하지않는게 좋다.
   -  기존 구현체와 충돌나지 않을지 심사숙고하자 
   - 예로 나온것이 동기화 관련된 컬렉션인데 나중에 추가된 디폴트 메서드는 동기화 하지 않아 기존 구현의 의미를 깨뜨림
 - 인터페이스 잘쓰자 라는 주제
-
-
 
 ### 22 인터페이스는 타입을 정의하는 용도로만 사용하라
 
@@ -2639,4 +2626,162 @@ public enum ExtendedOperation implements Operation {
 #### Synchronizer
 
 - 동기화 장치는 스레드가 다른 스레드를 기다릴 수 있게 하여 서로 작업을 조율할 수 있게 해줌
-- 
+
+- 자주 쓰이는 동기화 장치는 CountDownLatch와 Semaphore다. CyclicBarrier와 Exchanger는 그보다 덜 쓰인다. 그리고 가장 강력한 동기화 장치는 바로 Phaser이다.
+
+  - CountDownLatch 정도만 알고 나머지는 https://javabom.tistory.com/35 설명을 읽어보자.
+
+  - CountDownLatch 구조
+
+  - ![](https://blog.kakaocdn.net/dn/b2YbSt/btqCFyM006T/HAkxMuv3FaauxUMeVWf8YK/img.png)
+
+  - 예제 이정도 이해하면 될듯
+
+    ```
+      public static long time(Executor executor, int concurrency, Runnable action)
+          throws InterruptedException {
+        CountDownLatch ready = new CountDownLatch(concurrency);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(concurrency);
+    
+        for (int i = 0; i < concurrency; i++) {
+          executor.execute(() -> {
+            ready.countDown(); // 타이머에게 준비를 마쳤음을 알린다.
+            try {
+              start.await(); // 모든 작업자 스레드가 준비될 때까지 기다린다.
+              action.run();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } finally {
+              done.countDown();  // 타이머에게 작업을 마쳤음을 알린다.
+            }
+          });
+        }
+    
+        ready.await();     // 모든 작업자가 준비될 때까지 기다린다.
+        long startNanos = System.nanoTime();
+        start.countDown(); // 작업자들을 깨운다.
+        done.await();      // 모든 작업자가 일을 끝마치기를 기다린다.
+        return System.nanoTime() - startNanos;
+      }
+    ```
+
+  - 앞선 코드의 3가지 CountDownLatch는 CyclicBarrier 혹은 Phaser 한개로 대체할 수 있다.
+
+- ​	시간 간격을 잴때는 System.nanoTime을 사용하자.
+
+  - system.currentTimeMillis보다 더 정밀하고 실시간 시계의 시간 보정에 영향을 받지 않는다.
+  - 더 정밀한 시간 측정은 jmh 같은 특수 프레임워크를 사용해야 한다.
+
+
+
+#### 핵심정리
+
+- wait, notify를 직접 사용하는 것을 Current 'Assembly Language'로 프로그래밍하는 것에 비유할 수 있다.
+- 반면 java.util.concurrent는 고수준 언어에 비유할 수 있다.
+- 코드르 새로 작성한다면 wait, notify를 사용할 일이 거의 없다.
+- 레거시코드로 유지보수 해야한다면 wait는 항상 표준 관용구에 따라 while문 안에서 호출하자.
+- 일반적으로 notify보다는 notifyAll을 사용해야한다.
+  - notify를 잘못쓸경우 응답 불가 상태에 빠지지 않도록 각별히 주의하자.
+
+
+
+### 82 쓰레드 안전성 수준을 무서화하라
+
+- 메서드 선언에 synchronized 한정자를 선언할지는 구현 이슈일 뿐 API에 속하지 않는다.
+- 멀티스레드 환경에서도 API를 안전하게 사용하게 하려면 클래스가 지원하는 스레드 안전성 수준을 정확히 명시해야한다.
+- 다음은 스레드 안전성이 높은 순으로 나열한 것
+  - 불변(immutable) : 이 클래스의 인스턴스는 마치 상수와 같아서 외부 동기화도 필요 없다.
+    - String, Long, BigInteger가 대표적이다.
+  - 무조건적인 스레드 안전(unconditionally thread-safe) : 이 클래스의 인스턴스는 수정될 수 있으나, 내부에서 충실히 동기화 하여 별도의 외부 동기화없이 동시에 사용해도 안전하다.
+    - AtomicLong, ConcurrentHashMap이 여기에 속한다.
+  - 조건부 스레드 안전(Conditionally thread-safe) : 무조건적인 스레드 안전과 같으나 일부 메서드는 동시에 사용하려면 외부 동기화가 필요하다.
+    - Collections.synchronized 래퍼 메서드가 반환한 컬렉션들이 여기 속한다.
+  - 스레드 안전하지 않음(not thread-safe) : 이 클래스의 인스턴스는 수정될 수 있다.동시에 사용하려면 각각의 메서드 호출을 클라이언트가 선택한 외부 동기화 메커니즘으로 감싸야 한다. 
+    - ArrayList, HashMap 같은 기본 컬렉션이 여기에 속함
+  - 스레드 절대적(Thread-hostile) : 이 클래스는 모든 메서드 호출을 외부 동기화로 감싸더라도 멀티쓰레드 환경에서 안전하지 않다.
+- @Immutable, @ThreadSafe, @NotThreadSafe 애너테이션이있는데 조건부,무조건적인스레드안전 모두 @ThreadSafe에 속한다.
+
+
+
+
+
+#### 핵심정리
+
+- 모든 클래스는 자신의 스레드 안전성 정보를 명확히 문서화 해야한다.
+- 정확히 설명하거나, 스레드 안전성 애너테이션을 사용할 수 있다.
+- synchronized 한정자는 문서와 상관없다.
+
+
+
+- 추가 부분은 다음회차때 읽음
+
+
+
+### 83 지연 초기화는 신중히 사용하라
+
+- 일반적으로 지연초기화보다 일반 초기화 방법이 좋다.
+
+- 성능 때문에 지연초기화를 해야한다면 이중검사 관용구를 사용하라
+
+  - ```
+    private volatile FieldType field4;
+    
+    private FieldType getField4() {
+      FieldType result = field4;
+      if (result != null)    // 첫 번째 검사 (락 사용 안 함)
+        return result;
+    
+      synchronized(this) {
+        if (field4 == null) // 두 번째 검사 (락 사용)
+          field4 = computeFieldValue();
+        return field4;
+      }
+    }
+    ```
+
+  - 
+
+### 84 프로그램의 동작을 스레드 스케줄러에 기대지 말라
+
+- 정확성이나 성능이 스레드 스케줄러에 따라 달라지는 프로그램이라면 다른 플랫폼에 이식이 어렵다.
+
+- 실행 가능한 스레드 수를 적게 유지하는 주요 기법은 각 스레드가 유용한 작업을 완료한 후에 다음일거리를 기다리는것이다.
+
+  - **스레드는 당장 처리해야 할 작업이 없다면 실행되서는 안 된다.**
+
+  - Executor를 예를 들면 스레드 풀 크기를 적절히 설정하고 작업을 짧게 유지하면 된다.
+
+  - 단 너무 짧으면 작업분배하는데 성능이 떨어질 수 있다.
+
+  - 대기하는데 절대 바쁜 대기상태이면 안된다.
+
+    - 바쁜 대기(Busy Waiting) 이란
+
+    - 공유 자원에 접근하고자 하는 두개의 쓰레드 a,b가 있다고 해보자. 이때, 공유 자원은 한번에 하나의 쓰레드만 접근해야 race condition이 발생하지 않기 때문에 하나의 쓰레드가 공유자원을 사용중이라면 다른 쓰레드는 그 쓰레드가 공유 자원을 모두 사용할때까지 기다려야 한다.
+
+      이때, 기다리는 쓰레드가 공유 자원을 사용할수 있는지 없는지 계속해서 무한 루프를 돌면서 조건문을 체크하는 방식이 busy waiting이다.
+
+      busy waiting은 cpu의 자원을 쓸데없이 낭비하기 때문에 좋지 않은 쓰레드 동기화 방식이다.
+
+      https://simsimjae.tistory.com/289
+
+    - ```
+      while(true){
+      	//검사
+      }
+      ```
+
+- Thread.yield는 사용하지 말자, 테스트할 방법도 없다.
+  - JVM 성능마다 다를 수 있고 이식성도 좋지않음
+
+
+
+## 직렬화
+
+- Object -> 바이트 (직렬화)
+
+- 바이트 -> Object (역직렬화)
+- 직렬화 하려면 Serializable 인터페이스 추가
+- 크로스 플랫폼을 위한 Json 사용
+- 인스턴스의 직렬화는 웹에서는 중요하게 다루지 않기 때문에 나중에 필요하면 읽자.
