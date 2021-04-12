@@ -1077,6 +1077,7 @@ spec:
   - 불륨 자체를 뜻함
   - 클러스터 안에서 자원으로 다룸
   - 파드하고 별개로 관리 , 별도 생명주기가 있음
+  - PV는 `storageClassName` 속성을 [스토리지클래스](https://kubernetes.io/ko/docs/concepts/storage/storage-classes/)의 이름으로 설정하여 지정하는 클래스를 가질 수 있다. **특정 클래스의 PV는 해당 클래스를 요청하는 PVC에만 바인딩될 수 있다.**`storageClassName`이 없는 PV에는 클래스가 없으며 특정 클래스를 요청하지 않는 PVC에만 바인딩할 수 있다.
 - PVC(Persistence Volume Clame)
   - 사용자가 pv에 하는 요청
   - 사용하고싶은 용량, 읽기/쓰기모드는 어떤모드인지 등 요청
@@ -1210,7 +1211,9 @@ provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 ```
 
+#### Reclaim Policy 
 
+Dynamic Provisioning에 의해 생성된 PV의 정책은 Storage Class의 Reclaim Policy를 상속받기 때문에, 별도의 설정을 하지 않았다면 Dynamic Provisioning의 Reclaim Policy는 자동으로 Delete로 설정된다. 
 
 ## 명령어
 ```

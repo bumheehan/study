@@ -311,8 +311,12 @@ openssl x509 -req -days 3650 -extensions v3_user -in hbh.csr \
 openssl x509 -text -in hbh.crt
 
 
-
-
+### 
+#/C : 국가, ST=State 시/도 , O =회사 , CN = SSL 인증서버 full 도메인, 
+openssl genrsa -out tls.key 2048
+openssl req -new -sha256 -key tls.key -subj "/C=KR/ST=SEOUL/O=Openbase/CN=Targos" -out tls.csr
+openssl x509 -req -days 3650 -extensions v3_user -in tls.csr -CA ca.crt -CAcreateserial -CAkey  ca.key -out tls.crt
+rm -rf tls.csr
 
 ### 단순 nginx ingress tls 생성
 
