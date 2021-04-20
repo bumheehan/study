@@ -109,3 +109,12 @@ $npm view <package>             패키지 정보
 $npm view <package> peerDependencies     함께 설치해야하는 패키지 정보
 $npm root -g
 ```
+
+
+
+### 질문
+
+1. npm run build VS npm install
+   - run build는 package.json에 정의된 스크립트 실행
+   - npm install은 의존 패키지 설치
+   - 즉 package.json의 dependency가 바뀌면 빌드전에 npm install 해줘야함, 안 바뀌면 어플리케이션 코드수정 후 npm run build만 해줘도됨
