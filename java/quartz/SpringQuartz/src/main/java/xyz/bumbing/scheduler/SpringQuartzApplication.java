@@ -1,5 +1,7 @@
 package xyz.bumbing.scheduler;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -90,6 +92,15 @@ public class SpringQuartzApplication {
     public ResponseEntity<JobStatusResponse> status() {
 	try {
 	    return ResponseEntity.ok(schedulerService.getStatus());
+	} catch (Exception e) {
+	    e.printStackTrace();
+	    return ResponseEntity.badRequest().build();
+	}
+    }
+    @GetMapping("/scheduler/statusMap")
+    public ResponseEntity<Map<String,Object>> statusMap() {
+	try {
+	    return ResponseEntity.ok(schedulerService.getStatusMap());
 	} catch (Exception e) {
 	    e.printStackTrace();
 	    return ResponseEntity.badRequest().build();

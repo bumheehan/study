@@ -31,6 +31,7 @@ public class CustomJob extends QuartzJobBean implements InterruptableJob {
 	} catch (InterruptedException e) {
 	    e.printStackTrace();
 	}
+	System.out.println("JobDataMap : " + context.getJobDetail().getJobDataMap().get("data"));
 	System.out.println("timer stop");
 	if (isInterrupted) {
 	    System.out.println("jobKey: " + jobKey + "is Interrupted.");

@@ -187,6 +187,55 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "addScheduler Copy",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hostAddress\" : \"192.168.2.1\",\r\n    \"cliPort\": \"22\",\r\n    \"account\" : \"tasd\",\r\n    \"password\" : \"gfgf\",\r\n    \"id\" : \"gfgf\",\r\n    \"nonSandboxInterval\" : 1\r\n\r\n\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://localhost:8441/scheduler/forti",
+					"protocol": "https",
+					"host": [
+						"localhost"
+					],
+					"port": "8441",
+					"path": [
+						"scheduler",
+						"forti"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "statusMap",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/scheduler/status",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"scheduler",
+						"status"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
